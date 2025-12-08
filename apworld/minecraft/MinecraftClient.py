@@ -202,25 +202,30 @@ def convert_zip_apmc_to_base64(zip_apmc_path: str, output_path: str):
         f.write(encoded)
 
 
-def replace_apmc_files(forge_dir, apmc_file):
-    """Create APData folder if needed; clean .apmc files from APData; copy given .apmc into directory."""
-    if apmc_file is None:
-        return
-    apdata_dir = os.path.join(forge_dir, 'APData')
-    copy_apmc = True
-    if not os.path.isdir(apdata_dir):
-        os.mkdir(apdata_dir)
-        logging.info(f"Created APData folder in {forge_dir}")
-    for entry in os.scandir(apdata_dir):
-        if entry.name.endswith(".apmc") and entry.is_file():
-            if not os.path.samefile(apmc_file, entry.path):
-                os.remove(entry.path)
-                logging.info(f"Removed {entry.name} in {apdata_dir}")
-            else: # apmc already in apdata
-                copy_apmc = False
-    if copy_apmc:
-        copyfile(apmc_file, os.path.join(apdata_dir, os.path.basename(apmc_file)))
-        logging.info(f"Copied {os.path.basename(apmc_file)} to {apdata_dir}")
+def replace_apmc_files(forge_dir: str, zip_apmc_path: str) -> None:
+    """
+    Takes the AP-generated ZIP-style .apmc file and converts it into
+    a Forge-compatible base64 .apmc file inside the server directory.
+    """
+
+    # Where Forge expects the final base64 file
+    target_apdata = os.path.join(forge_dir, "APData")
+    os.makedirs(target_apdata, exist_ok=True)
+
+    # Remove any existing .apmc files (keep folder clean)
+    for entry in os.scandir(target_apdata):
+        if entry.name.endswith(".apmc"):
+            os.remove(entry.path)
+            print(f"Removed old patch: {entry.name}")
+
+    # Forge expects the same name but base64 contents
+    file_name = os.path.basename(zip_apmc_path)
+    base64_apmc_path = os.path.join(target_apdata, file_name)
+
+    # Convert ZIP → base64 JSON text
+    convert_zip_apmc_to_base64(zip_apmc_path, base64_apmc_path)
+
+    print(f"Converted {zip_apmc_path} → Forge base64 {base64_apmc_path}")
 
 
 def read_apmc_file(apmc_file: str) -> dict:
