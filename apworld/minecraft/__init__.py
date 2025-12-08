@@ -2,6 +2,7 @@ import os
 import json
 import settings
 import typing
+import hashlib
 from base64 import b64encode, b64decode
 from typing import Dict, Any
 
@@ -14,6 +15,7 @@ from .Options import MinecraftOptions
 from .Structures import shuffle_structures
 from .ItemPool import build_item_pool, get_junk_item_names
 from .Rules import set_rules
+from .MinecraftPatch import MinecraftProcedurePatch
 
 client_version = 9
 
@@ -106,25 +108,45 @@ class MinecraftWorld(World):
     item_name_to_id = Constants.item_name_to_id
     location_name_to_id = Constants.location_name_to_id
 
-    def _get_mc_data(self) -> Dict[str, Any]:
+    def _get_mc_data(self) -> dict:
+        """
+        Return a dictionary representing the Minecraft world data for this player.
+
+        This data is written into the patch container (.apmc) as 'data.json'.
+        The structure is compatible with the Minecraft client mod for Archipelago.
+        """
+        # List of exits for structure mapping
         exits = [connection[0] for connection in Constants.region_info["default_connections"]]
-        return {
-            'world_seed': self.random.getrandbits(32),
-            'seed_name': self.multiworld.seed_name,
-            'player_name': self.player_name,
-            'player_id': self.player,
-            'client_version': client_version,
-            'structures': {exit: self.multiworld.get_entrance(exit, self.player).connected_region.name for exit in exits},
-            'advancement_goal': self.options.advancement_goal.value,
-            'egg_shards_required': min(self.options.egg_shards_required.value,
-                                       self.options.egg_shards_available.value),
-            'egg_shards_available': self.options.egg_shards_available.value,
-            'required_bosses': self.options.required_bosses.current_key,
-            'MC35': bool(self.options.send_defeated_mobs.value),
-            'death_link': bool(self.options.death_link.value),
-            'starting_items': json.dumps(self.options.starting_items.value),
-            'race': self.multiworld.is_race,
+
+        data = {
+            "world_seed": self.random.getrandbits(32),  # Unique seed for world generation
+            "seed_name": self.multiworld.seed_name,
+            "player_name": self.multiworld.get_player_name(self.player),
+            "player_id": self.player,
+            "client_version": client_version,
+            "structures": {
+                exit_name: self.multiworld.get_entrance(exit_name, self.player).connected_region.name
+                for exit_name in exits
+            },
+            "advancement_goal": self.options.advancement_goal.value,
+            "egg_shards_required": min(
+                self.options.egg_shards_required.value,
+                self.options.egg_shards_available.value
+            ),
+            "egg_shards_available": self.options.egg_shards_available.value,
+            "required_bosses": self.options.required_bosses.current_key,
+            "MC35": bool(self.options.send_defeated_mobs.value),
+            "death_link": bool(self.options.death_link.value),
+            "starting_items": json.dumps(self.options.starting_items.value),
+            "race": self.multiworld.is_race,
         }
+
+        # ---- Server info commented out ----
+        # local hosting in the future, could do:
+        # data["server"] = "127.0.0.1"
+        # data["port"] = 25565
+
+        return data
 
     def create_item(self, name: str) -> Item:
         item_class = ItemClassification.filler
@@ -184,10 +206,32 @@ class MinecraftWorld(World):
     set_rules = set_rules
 
     def generate_output(self, output_directory: str) -> None:
-        data = self._get_mc_data()
-        filename = f"{self.multiworld.get_out_file_name_base(self.player)}.apmc"
-        with open(os.path.join(output_directory, filename), 'wb') as f:
-            f.write(b64encode(bytes(json.dumps(data), 'utf-8')))
+        """
+        Generates a Minecraft patch file (.apmc) for this player and writes it
+        to the specified output directory.
+        """
+        # Create patch container for this player
+        patch = MinecraftProcedurePatch(
+            player=self.player,
+            player_name=self.multiworld.get_player_name(self.player)
+        )
+
+        # Store Minecraft world data
+        patch.data = self._get_mc_data()
+        patch.hash = hashlib.sha1(json.dumps(patch.data).encode()).hexdigest()
+
+        # Explicitly set patch name and file ending
+        patch.patch_name = f"AP_{self.multiworld.seed_name}_P{self.player}_{self.multiworld.get_player_name(self.player)}"
+        patch.patch_file_ending = ".apmc"
+
+        # Write patch to disk
+        patch_path = os.path.join(output_directory, patch.patch_name + patch.patch_file_ending)
+        patch.write(patch_path)
+
+        # ---- Server fields commented out ----
+        # If in the future to get local auto-join, it'd be something like:
+        # patch.server = "127.0.0.1"
+        # patch.port = 25565r
 
     def fill_slot_data(self) -> dict:
         return self._get_mc_data()
@@ -203,8 +247,8 @@ class MinecraftItem(Item):
     game = "Minecraft"
 
 
-def mc_update_output(raw_data, server, port):
-    data = json.loads(b64decode(raw_data))
-    data['server'] = server
-    data['port'] = port
-    return b64encode(bytes(json.dumps(data), 'utf-8'))
+def mc_update_output(data: dict, server: str, port: int) -> dict:
+    """Update server info in Minecraft world data."""
+    data["server"] = server
+    data["port"] = port
+    return data
