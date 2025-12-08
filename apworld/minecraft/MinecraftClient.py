@@ -1,4 +1,6 @@
 import argparse
+import base64
+import zipfile
 import json
 import os
 import sys
@@ -176,6 +178,30 @@ def find_ap_randomizer_jar(forge_dir):
         return None
 
 
+def convert_zip_apmc_to_base64(zip_apmc_path: str, output_path: str):
+    """
+    Reads a ZIP-format .apmc (APProcedurePatch) created by Archipelago,
+    extracts data.json, converts it to base64 text, and writes a
+    Forge-mod-compatible .apmc file.
+    """
+
+    with zipfile.ZipFile(zip_apmc_path, "r") as zf:
+        if "data.json" not in zf.namelist():
+            raise RuntimeError("ZIP APMC missing data.json")
+
+        raw_json = zf.read("data.json")
+        # Ensure JSON is pretty-normalized
+        data = json.loads(raw_json.decode("utf-8"))
+        json_text = json.dumps(data)
+
+        # Forge mod expects BASE64 *text*, not binary ZIP!
+        encoded = base64.b64encode(json_text.encode("utf-8")).decode("utf-8")
+
+    # Write base64 as plain text file
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(encoded)
+
+
 def replace_apmc_files(forge_dir, apmc_file):
     """Create APData folder if needed; clean .apmc files from APData; copy given .apmc into directory."""
     if apmc_file is None:
@@ -197,11 +223,16 @@ def replace_apmc_files(forge_dir, apmc_file):
         logging.info(f"Copied {os.path.basename(apmc_file)} to {apdata_dir}")
 
 
-def read_apmc_file(apmc_file):
-    from base64 import b64decode
-
-    with open(apmc_file, 'r') as f:
-        return json.loads(b64decode(f.read()))
+def read_apmc_file(apmc_file: str) -> dict:
+    """Read a Minecraft .apmc patch (ZIP) and return its data.json as a dictionary."""
+    if not os.path.isfile(apmc_file):
+        raise FileNotFoundError(f"APMC file not found: {apmc_file}")
+    
+    with zipfile.ZipFile(apmc_file, 'r') as zf:
+        if "data.json" not in zf.namelist():
+            raise ValueError(f"data.json not found inside {apmc_file}")
+        with zf.open("data.json") as f:
+            return json.load(f)
 
 
 def update_mod(forge_dir, url: str):
@@ -390,8 +421,18 @@ def is_correct_forge(forge_dir, forge_version) -> bool:
         return True
     return False
 
+def run_client(_url=None):
+    from .MinecraftClientExecutable import launch  # Your actual Minecraft launcher code
+    launch_subprocess(launch, name="MinecraftClient")
+
 def add_to_launcher_components():
-    component = Component("Minecraft Client", func=run_client, component_type=Type.CLIENT, file_identifier=SuffixIdentifier(".apmc"), cli=True)
+    component = Component(
+        "Minecraft Client",
+        func=run_client,
+        component_type=Type.CLIENT,
+        file_identifier=SuffixIdentifier(".apmc"),
+        cli=True
+    )
     components.append(component)
 
 
