@@ -1,5 +1,5 @@
 import argparse
-import base64
+from base64 import b64encode, b64decode
 import zipfile
 import json
 import os
@@ -178,28 +178,47 @@ def find_ap_randomizer_jar(forge_dir):
         return None
 
 
-def convert_zip_apmc_to_base64(zip_apmc_path: str, output_path: str):
+def convert_apmc_to_base64(input_path: str, output_path: str) -> None:
     """
-    Reads a ZIP-format .apmc (APProcedurePatch) created by Archipelago,
-    extracts data.json, converts it to base64 text, and writes a
-    Forge-mod-compatible .apmc file.
+    Converts an APMC file into a base64-encoded JSON text file.
+    Supports BOTH:
+    - New-format ZIP-based .apmc (with data.json)
+    - Old-format base64 JSON .apmc (already encoded)
     """
 
-    with zipfile.ZipFile(zip_apmc_path, "r") as zf:
-        if "data.json" not in zf.namelist():
-            raise RuntimeError("ZIP APMC missing data.json")
+    # Case 1: NEW FORMAT (ZIP PROCEDURE PATCH)
+    if zipfile.is_zipfile(input_path):
+        with zipfile.ZipFile(input_path, 'r') as zf:
+            if "data.json" not in zf.namelist():
+                raise ValueError("ZIP .apmc missing data.json!")
 
-        raw_json = zf.read("data.json")
-        # Ensure JSON is pretty-normalized
-        data = json.loads(raw_json.decode("utf-8"))
-        json_text = json.dumps(data)
+            raw_json = zf.read("data.json").decode("utf-8")
+            encoded = b64encode(raw_json.encode("utf-8")).decode("utf-8")
 
-        # Forge mod expects BASE64 *text*, not binary ZIP!
-        encoded = base64.b64encode(json_text.encode("utf-8")).decode("utf-8")
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(encoded)
 
-    # Write base64 as plain text file
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(encoded)
+        print(f"[APMC] Converted ZIP {input_path} → base64 JSON {output_path}")
+        return
+
+    # Case 2: OLD FORMAT (BASE64 JSON)
+    else:
+        with open(input_path, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+
+        # Validate it's actually base64
+        try:
+            decoded = b64decode(content).decode('utf-8')
+            json.loads(decoded)  # ensure it is valid JSON
+        except Exception as e:
+            raise ValueError(f"Invalid old-format .apmc file: {input_path}") from e
+
+        # Just copy it — it’s already base64
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        print(f"[APMC] Passed through old-format base64 file: {input_path} → {output_path}")
+        return
 
 
 def replace_apmc_files(forge_dir: str, zip_apmc_path: str) -> None:
@@ -223,21 +242,37 @@ def replace_apmc_files(forge_dir: str, zip_apmc_path: str) -> None:
     base64_apmc_path = os.path.join(target_apdata, file_name)
 
     # Convert ZIP → base64 JSON text
-    convert_zip_apmc_to_base64(zip_apmc_path, base64_apmc_path)
+    convert_apmc_to_base64(zip_apmc_path, base64_apmc_path)
 
     print(f"Converted {zip_apmc_path} → Forge base64 {base64_apmc_path}")
 
 
-def read_apmc_file(apmc_file: str) -> dict:
-    """Read a Minecraft .apmc patch (ZIP) and return its data.json as a dictionary."""
-    if not os.path.isfile(apmc_file):
-        raise FileNotFoundError(f"APMC file not found: {apmc_file}")
-    
-    with zipfile.ZipFile(apmc_file, 'r') as zf:
-        if "data.json" not in zf.namelist():
-            raise ValueError(f"data.json not found inside {apmc_file}")
-        with zf.open("data.json") as f:
-            return json.load(f)
+def read_apmc_file(apmc_path: str):
+    """
+    Reads either:
+    - NEW FORMAT: ZIP containing data.json
+    - OLD FORMAT: base64 JSON text
+    """
+    if not os.path.isfile(apmc_path):
+        raise FileNotFoundError(f"APMC file not found: {apmc_path}")
+
+    # NEW format: ZIP procedure patch
+    if zipfile.is_zipfile(apmc_path):
+        with zipfile.ZipFile(apmc_path, 'r') as zf:
+            if "data.json" not in zf.namelist():
+                raise ValueError("APMC ZIP missing data.json")
+            raw = zf.read("data.json").decode("utf-8")
+            return json.loads(raw)
+
+    # OLD format: base64 JSON text
+    with open(apmc_path, "r", encoding="utf-8") as f:
+        content = f.read().strip()
+
+    try:
+        decoded = b64decode(content).decode("utf-8")
+        return json.loads(decoded)
+    except Exception:
+        raise ValueError("APMC file is neither ZIP nor valid base64 JSON")
 
 
 def update_mod(forge_dir, url: str):
