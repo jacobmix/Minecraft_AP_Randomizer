@@ -1,0 +1,27 @@
+{
+    "regions": [
+        ["Menu", ["New World"], null],
+        ["Top", ["Top[exit]"], {"top": 128, "bottom": 112}],
+        ["Shovel1", ["Shovel1[exit]"], {"top": 111, "bottom": 104}],
+        ["Shovel2", ["Shovel2[exit]"], {"top": 103, "bottom": 97}],
+        ["Pick1", ["Pick1[exit]"], {"top": 96, "bottom": 82}],
+        ["Pick2", ["Pick2[exit]"], {"top": 81, "bottom": 67}],
+        ["Haste1", ["Haste1[exit]"], {"top": 66, "bottom": 46}],
+        ["Pick3", ["Pick3[exit]"], {"top": 45, "bottom": 9}],
+        ["Pick4", ["Pick4[exit]"], {"top": 8, "bottom": -35}],
+        ["Haste2", ["Haste2[exit]"], {"top": -36, "bottom": -49}],
+        ["Pick5", [], {"top": -50, "bottom": -63}]
+    ],
+    "mandatory_connections": [
+        ["New World", "Top"],
+        ["Top[exit]", "Shovel1"],
+        ["Shovel1[exit]", "Shovel2"],
+        ["Shovel2[exit]", "Pick1"],
+        ["Pick1[exit]", "Pick2"],
+        ["Pick2[exit]", "Haste1"],
+        ["Haste1[exit]", "Pick3"],
+        ["Pick3[exit]", "Pick4"],
+        ["Pick4[exit]", "Haste2"],
+        ["Haste2[exit]", "Pick5"]
+    ]
+}

@@ -1,0 +1,80 @@
+{
+	"all_items": [
+		"Progressive Pickaxe",
+		"Progressive Shovel",
+		"Progressive Axe",
+		"Progressive Hoe",
+		"Progressive Haste",
+		"TNT",
+		"Golden Pick",
+		"True Golden Pick",
+		"Defensive Fish",
+		"Bee Trap",
+		"Creeper Trap",
+		"Sand Rain",
+		"Spawn Wither",
+		"Goon Squad",
+		"Fish Fountain",
+		"Bad Air",
+		"Pocket Sand",
+		"Pesky Bird",
+		"Flash Flood",
+		"Pet the kitty",
+		"Wingardium Leviosa",
+		"About Face",
+		"Acme Delivery",
+		"Progressive Excavation"
+	],
+	"progression_items": [
+		"Progressive Pickaxe",
+		"Progressive Shovel",
+		"Progressive Haste"
+	],
+	"useful_items": [
+		"TNT",
+		"Golden Pick",
+		"Progressive Excavation"
+	],
+	"trap_items": [
+		"Bee Trap",
+		"Creeper Trap",
+		"Sand Rain",
+		"Spawn Wither",
+		"Goon Squad",
+		"Fish Fountain",
+		"Bad Air",
+		"Pocket Sand",
+		"Pesky Bird",
+		"Flash Flood",
+		"Pet the kitty",
+		"Wingardium Leviosa",
+		"About Face",
+		"Acme Delivery"
+	],
+	"required_pool": {
+	    "Progressive Pickaxe": 6,
+	    "Progressive Shovel": 4,
+	    "Progressive Haste": 3,
+	    "True Golden Pick": 8,
+		"Progressive Excavation" : 3
+	},
+	"junk_weights": {
+	    "TNT": 10,
+		"Goon Squad": 5,
+		"Bee Trap": 5,
+		"Creeper Trap": 5,
+		"Sand Rain": 5,
+		"Spawn Wither": 1,
+		"Fish Fountain": 2,
+		"Bad Air": 2,
+		"Pocket Sand": 2,
+		"Pesky Bird": 2,
+		"Flash Flood": 3,
+		"Pet the kitty": 3,
+		"Wingardium Leviosa": 3,
+		"About Face": 3,
+		"Acme Delivery": 3,
+		"Golden Pick": 5,
+		"True Golden Pick": 2
+	}
+}
