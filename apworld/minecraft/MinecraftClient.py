@@ -23,6 +23,7 @@ import subprocess
 import Utils
 from Utils import is_windows
 from worlds.LauncherComponents import Component, SuffixIdentifier, Type, components, launch_subprocess
+from settings import get_settings
 
 atexit.register(input, "Press enter to exit.")
 
@@ -73,8 +74,12 @@ def try_auto_launch_minecraft():
     """
     Launch Minecraft using the 'mc_launch' host.yaml setting if provided.
     """
-    options = Utils.get_options()
-    mc_launch = options["minecraft_options"].get("mc_launch", "").strip()
+    settings = get_settings()
+    mc_settings = settings.minecraft_options
+
+    mc_launch = mc_settings.mc_launch
+    forge_dir = os.path.expanduser(str(mc_settings.forge_directory))
+    max_heap  = mc_settings.max_heap_size
 
     if not mc_launch:
         return
@@ -329,23 +334,26 @@ def check_eula(forge_dir):
                 sys.exit(0)
 
 
-def find_jdk_dir(version: str) -> str:
+def find_jdk_dir(version: str) -> str | None:
     """get the specified versions jdk directory"""
     for entry in os.listdir():
         if os.path.isdir(entry) and entry.startswith(f"jdk{version}"):
             return os.path.abspath(entry)
 
 
-def find_jdk(version: str, options) -> str:
+def find_jdk(version: str) -> str:
     """get the java exe location"""
-
     if is_windows:
         jdk = find_jdk_dir(version)
-        jdk_exe = os.path.join(jdk, "bin", "java.exe")
-        if os.path.isfile(jdk_exe):
-            return jdk_exe
+        if jdk:
+            jdk_exe = os.path.join(jdk, "bin", "java.exe")
+            if os.path.isfile(jdk_exe):
+                return jdk_exe
+        return "java"  # fallback
     else:
-        jdk_exe = shutil.which(options["minecraft_options"].get("java", "java"))
+        settings = get_settings()
+        java_cmd = settings.minecraft_options.java or "java"
+        jdk_exe = shutil.which(java_cmd)
         if not jdk_exe:
             raise Exception("Could not find Java. Is Java installed on the system?")
         return jdk_exe
@@ -376,10 +384,10 @@ def download_java(java: str):
             sys.exit(0)
 
 
-def install_forge(directory: str, forge_version: str, java_version: str, options):
+def install_forge(directory, forge_version, java_version):
     """download and install forge"""
 
-    java_exe = find_jdk(java_version, options)
+    java_exe = find_jdk(java_version)
     if java_exe is not None:
         print(f"Downloading Forge {forge_version}...")
         forge_url = f"https://maven.minecraftforge.net/net/minecraftforge/forge/{forge_version}/forge-{forge_version}-installer.jar"
@@ -396,10 +404,10 @@ def install_forge(directory: str, forge_version: str, java_version: str, options
             os.remove(forge_install_jar)
 
 
-def run_forge_server(forge_dir: str, java_version: str, heap_arg: str, forge_version, options) -> Popen:
+def run_forge_server(forge_dir: str, java_version: str, heap_arg: str, forge_version) -> Popen:
     """Run the Forge server."""
 
-    java_exe = find_jdk(java_version, options)
+    java_exe = find_jdk(java_version)
     if not os.path.isfile(java_exe):
         java_exe = "java"  # try to fall back on java in the PATH
 
@@ -461,14 +469,13 @@ def is_correct_forge(forge_dir, forge_version) -> bool:
         return True
     return False
 
-def run_client(_url=None):
-    from .MinecraftClientExecutable import launch  # Your actual Minecraft launcher code
-    launch_subprocess(launch, name="MinecraftClient")
+def launch_client(_url=None):
+    launch_subprocess(run_client, name="MinecraftClient")
 
 def add_to_launcher_components():
     component = Component(
         "Minecraft Client",
-        func=run_client,
+        func=launch_client,
         component_type=Type.CLIENT,
         file_identifier=SuffixIdentifier(".apmc"),
         cli=True
@@ -497,8 +504,15 @@ def run_client(*args):
     # Change to executable's working directory
     os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
-    options = Utils.get_options()
-    channel = args.channel or options["minecraft_options"]["release_channel"]
+    settings = get_settings()
+    mc_settings = settings.minecraft_options
+
+    mc_launch = mc_settings.mc_launch
+    forge_dir = os.path.expanduser(str(mc_settings.forge_directory))
+    max_heap  = mc_settings.max_heap_size
+
+    channel = args.channel or mc_settings.release_channel
+
     apmc_data = None
     data_version = args.data_version or None
 
@@ -511,12 +525,10 @@ def run_client(*args):
 
     versions = get_minecraft_versions(data_version, channel)
 
-    forge_dir = options["minecraft_options"]["forge_directory"]
-    max_heap = options["minecraft_options"]["max_heap_size"]
     forge_version = args.forge or versions["forge"]
-    java_version = args.java or versions["java"]
-    mod_url = versions["url"]
-    java_dir = find_jdk_dir(java_version)
+    java_version  = args.java or versions["java"]
+    mod_url       = versions["url"]
+    java_dir      = find_jdk_dir(java_version)
 
     if args.install:
         if is_windows:
@@ -524,7 +536,7 @@ def run_client(*args):
             download_java(java_version)
         if not is_correct_forge(forge_dir, forge_version):
             print("Installing Minecraft Forge")
-            install_forge(forge_dir, forge_version, java_version, options)
+            install_forge(forge_dir, forge_version, java_version)
         else:
             print("Correct Forge version already found, skipping install.")
         sys.exit(0)
@@ -542,7 +554,7 @@ def run_client(*args):
 
     if not is_correct_forge(forge_dir, forge_version):
         if prompt_yes_no(f"Did not find forge version {forge_version} download and install it now?"):
-            install_forge(forge_dir, forge_version, java_version, options)
+            install_forge(forge_dir, forge_version, java_version)
         if not os.path.isdir(forge_dir):
             raise NotADirectoryError(f"Path {forge_dir} does not exist or could not be accessed.")
 
@@ -553,7 +565,7 @@ def run_client(*args):
     replace_apmc_files(forge_dir, apmc_file)
     check_eula(forge_dir)
     timeout = 90
-    server_process = run_forge_server(forge_dir, java_version, max_heap, forge_version, options)
+    server_process = run_forge_server(forge_dir, java_version, max_heap, forge_version)
 
     # Wait for server to finish starting
     wait_for_server_ready(forge_dir)
