@@ -57,9 +57,9 @@ class MinecraftDigSettings(settings.Group):
     forge_directory: ForgeDirectory = ForgeDirectory("Minecraft Dig Forge server")
     max_heap_size: str = "2G"
     mc_launch: MCLaunch = MCLaunch("")
-    forge_url: ForgeURL = ForgeURL ("https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.4-45.3.15/forge-1.19.4-45.3.15-installer.jar")
+    forge_url: ForgeURL = ForgeURL ("")
     dig_mod_url: DigModURL = DigModURL("")
-    java_version: JavaVersion = JavaVersion("17")
+    java_version: JavaVersion = JavaVersion("")
 
 class MinecraftDigWorld(World):
     """

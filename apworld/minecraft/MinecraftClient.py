@@ -31,45 +31,6 @@ atexit.register(input, "Press enter to exit.")
 max_heap_re = re.compile(r"^\d+[mMgG][bB]?$")
 
 
-def sanitize_mc_launch(mc_launch: str) -> list[str]:
-    """
-    Sanitize a Minecraft launch string from host.yaml.
-    
-    Handles:
-      - Outer quotes around the entire command
-      - Executables with or without spaces
-      - Arguments with quotes around them
-      - Cross-platform (Windows/Mac/Linux)
-    """
-    if not mc_launch:
-        return []
-
-    mc_launch = mc_launch.strip()
-
-    # Remove outer quotes around the entire string
-    if (mc_launch.startswith('"') and mc_launch.endswith('"')) or \
-       (mc_launch.startswith("'") and mc_launch.endswith("'")):
-        mc_launch = mc_launch[1:-1].strip()
-
-    # Use posix=False on Windows, True on Mac/Linux
-    parts = shlex.split(mc_launch, posix=(sys.platform != "win32"))
-
-    # Remove wrapping quotes from each part if present
-    cleaned = []
-    for i, part in enumerate(parts):
-        if (part.startswith('"') and part.endswith('"')) or \
-           (part.startswith("'") and part.endswith("'")):
-            inner = part[1:-1]
-            # For the first argument (exe) on Windows: remove quotes if no spaces
-            if i == 0 and sys.platform == "win32" and " " not in inner:
-                part = inner
-            else:
-                part = inner
-        cleaned.append(part)
-
-    return cleaned
-
-
 def try_auto_launch_minecraft():
     """
     Launch Minecraft using the 'mc_launch' host.yaml setting if provided.
@@ -469,13 +430,10 @@ def is_correct_forge(forge_dir, forge_version) -> bool:
         return True
     return False
 
-def launch_client(_url=None):
-    launch_subprocess(run_client, name="MinecraftClient")
-
 def add_to_launcher_components():
     component = Component(
         "Minecraft Client",
-        func=launch_client,
+        func=run_client,
         component_type=Type.CLIENT,
         file_identifier=SuffixIdentifier(".apmc"),
         cli=True
