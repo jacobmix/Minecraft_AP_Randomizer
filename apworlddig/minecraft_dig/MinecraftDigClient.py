@@ -281,6 +281,8 @@ def run_client(*args):
     java_version = getattr(mc_settings, "java_version", "") or args.java or DEFAULT_DIG_JAVA_VERSION
     forge_url = getattr(mc_settings, "forge_url", "") or args.forge or DEFAULT_DIG_FORGE_URL
     mod_url = getattr(mc_settings, "dig_mod_url", "") or args.mod or DEFAULT_DIG_MOD_URL
+    java = getattr(mc_settings, "java", "")
+    java_dir = find_jdk_dir(java_version)
 
     if args.install:
         print("Installing Java and Forge for Minecraft Dig...")
@@ -297,6 +299,14 @@ def run_client(*args):
     apmcdig_file = os.path.abspath(args.apmcdig_file) if args.apmcdig_file else None
     if apmcdig_file is None:
         apmcdig_file = Utils.open_filename('Select APMCDig file', (('APMCDig File', ('.apmcdig',)),))
+
+    if is_windows:
+        if java_dir is None or not os.path.isdir(java_dir):
+            if prompt_yes_no("Did not find java directory. Download and install java now?"):
+                download_java(java_version)
+                java_dir = find_jdk_dir(java_version)
+            if java_dir is None or not os.path.isdir(java_dir):
+                raise NotADirectoryError(f"Path {java_dir} does not exist or could not be accessed.")
 
     if not is_correct_forge(forge_dir, forge_url):
         if prompt_yes_no("Forge is not installed. Would you like to install it now?"):

@@ -53,6 +53,12 @@ class MinecraftDigSettings(settings.Group):
         Default: "17"
         """
         pass
+    class JavaPath(str):
+        """
+        Java path.
+        Default: ""
+        """
+        pass
 
     forge_directory: ForgeDirectory = ForgeDirectory("Minecraft Dig Forge server")
     max_heap_size: str = "2G"
@@ -60,6 +66,7 @@ class MinecraftDigSettings(settings.Group):
     forge_url: ForgeURL = ForgeURL ("")
     dig_mod_url: DigModURL = DigModURL("")
     java_version: JavaVersion = JavaVersion("")
+    java: JavaPath = JavaPath("")
 
 class MinecraftDigWorld(World):
     """

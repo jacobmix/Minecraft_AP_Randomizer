@@ -12,6 +12,7 @@ from shutil import copyfile
 from time import strftime
 import logging
 from typing import Any
+import tkinter as tk
 
 import requests
 import shlex
@@ -19,11 +20,14 @@ import socket
 import time
 import tempfile
 import subprocess
+import threading
 
 import Utils
 from Utils import is_windows
 from worlds.LauncherComponents import Component, SuffixIdentifier, Type, components, launch_subprocess
 from settings import get_settings
+from .ui_prompts import yes_no, info
+
 
 atexit.register(input, "Press enter to exit.")
 
@@ -97,36 +101,6 @@ def wait_for_server_ready(forge_dir: str, timeout: int = 120):
             raise TimeoutError("Timeout waiting for server to be ready")
 
         time.sleep(0.5)
-
-
-#def get_minecraft_server_port(forge_dir: str) -> int:
-#    """Read server.properties to get server port, defaulting to 25565."""
-#    port = 25565  # default
-#    properties_file = os.path.join(forge_dir, "server.properties")
-#    if os.path.isfile(properties_file):
-#        with open(properties_file, "r") as f:
-#            for line in f:
-#                line = line.strip()
-#                if line.startswith("server-port"):
-#                    try:
-#                        port = int(line.split("=", 1)[1])
-#                    except ValueError:
-#                        pass
-#                    break
-#    return port
-
-
-def prompt_yes_no(prompt):
-    yes_inputs = {'yes', 'ye', 'y'}
-    no_inputs = {'no', 'n'}
-    while True:
-        choice = input(prompt + " [y/n] ").lower()
-        if choice in yes_inputs:
-            return True
-        elif choice in no_inputs:
-            return False
-        else:
-            print('Please respond with "y" or "n".')
 
 
 def find_ap_randomizer_jar(forge_dir):
@@ -253,7 +227,7 @@ def update_mod(forge_dir, url: str):
     if ap_randomizer != os.path.basename(url):
         logging.info(f"A new release of the Minecraft AP randomizer mod was found: "
                      f"{os.path.basename(url)}")
-        if prompt_yes_no("Would you like to update?"):
+        if yes_no("Minecraft Client", "Would you like to update?"):
             old_ap_mod = os.path.join(forge_dir, 'mods', ap_randomizer) if ap_randomizer is not None else None
             new_ap_mod = os.path.join(forge_dir, 'mods', os.path.basename(url))
             logging.info("Downloading AP randomizer mod. This may take a moment...")
@@ -286,7 +260,7 @@ def check_eula(forge_dir):
             # Prompt user to agree to the EULA
             logging.info("You need to agree to the Minecraft EULA in order to run the server.")
             logging.info("The EULA can be found at https://account.mojang.com/documents/minecraft_eula")
-            if prompt_yes_no("Do you agree to the EULA?"):
+            if yes_no("Minecraft Client", "Do you agree to the EULA?"):
                 f.seek(0)
                 f.write(text.replace('false', 'true'))
                 f.truncate()
@@ -341,7 +315,7 @@ def download_java(java: str):
     else:
         print(f"Error downloading Java (status code {resp.status_code}).")
         print(f"If this was not expected, please report this issue on the Archipelago Discord server.")
-        if not prompt_yes_no("Continue anyways?"):
+        if not yes_no("Minecraft Client", "Continue anyways?"):
             sys.exit(0)
 
 
@@ -433,12 +407,16 @@ def is_correct_forge(forge_dir, forge_version) -> bool:
 def add_to_launcher_components():
     component = Component(
         "Minecraft Client",
-        func=run_client,
+        func=run_client_threaded,
         component_type=Type.CLIENT,
         file_identifier=SuffixIdentifier(".apmc"),
         cli=True
     )
     components.append(component)
+
+
+def run_client_threaded(*args):
+    threading.Thread(target=run_client, args=args, daemon=True).start()
 
 
 def run_client(*args):
@@ -504,14 +482,14 @@ def run_client(*args):
 
     if is_windows:
         if java_dir is None or not os.path.isdir(java_dir):
-            if prompt_yes_no("Did not find java directory. Download and install java now?"):
+            if yes_no("Minecraft Client", "Did not find java directory. Download and install java now?"):
                 download_java(java_version)
                 java_dir = find_jdk_dir(java_version)
             if java_dir is None or not os.path.isdir(java_dir):
                 raise NotADirectoryError(f"Path {java_dir} does not exist or could not be accessed.")
 
     if not is_correct_forge(forge_dir, forge_version):
-        if prompt_yes_no(f"Did not find forge version {forge_version} download and install it now?"):
+        if yes_no("Minecraft Client", f"Did not find forge version {forge_version} download and install it now?"):
             install_forge(forge_dir, forge_version, java_version)
         if not os.path.isdir(forge_dir):
             raise NotADirectoryError(f"Path {forge_dir} does not exist or could not be accessed.")
@@ -527,23 +505,6 @@ def run_client(*args):
 
     # Wait for server to finish starting
     wait_for_server_ready(forge_dir)
-
-#    server_port = get_minecraft_server_port(forge_dir)
-#    server_host = "127.0.0.1"
-#    timeout = 90
-#    start_time = time.time()
-#
-#    while True:
-#        try:
-#            with socket.create_connection((server_host, server_port), timeout=1):
-#                break
-#        except (ConnectionRefusedError, OSError):
-#            if time.time() - start_time > timeout:
-#                print("[Minecraft Client] Timeout waiting for server to start")
-#                break
-#            time.sleep(1)
-#
-#    time.sleep(5)
 
     # Auto-launch Minecraft
     try_auto_launch_minecraft()
