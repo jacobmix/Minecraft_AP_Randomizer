@@ -505,8 +505,8 @@ def run_client(*args):
                 "- **Other UNIX systems**: Refer to your distro's documentation.\n\n"
                 "After installing Java, press 'Yes' and select the full path to the Java executable.\n"
                 "For example:\n"
-                "  macOS with Homebrew: /opt/homebrew/opt/openjdk@17/bin/java\n"
-                "  Linux/macOS: /usr/lib/jvm/java-17-openjdk/bin/java\n"
+                "  macOS with Homebrew: /opt/homebrew/opt/openjdk@{java_version}/bin/java\n"
+                "  Linux/macOS: /usr/lib/jvm/java-{java_version}-openjdk/bin/java\n"
             )
     
             if yes_no("Minecraft Client", instructions):

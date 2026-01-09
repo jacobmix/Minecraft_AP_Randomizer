@@ -12,180 +12,289 @@ from shutil import copyfile
 from time import strftime
 import logging
 from typing import Any
+import tkinter as tk
+
 import requests
-import subprocess
+import shlex
+import socket
 import time
+import tempfile
+import subprocess
+import threading
 
 import Utils
 from Utils import is_windows
 from worlds.LauncherComponents import Component, SuffixIdentifier, Type, components, launch_subprocess
 from settings import get_settings
+from .ui_prompts import yes_no, info
+
 
 atexit.register(input, "Press enter to exit.")
 
-# Default Dig settings
-DEFAULT_DIG_MOD_URL = "https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/download/dig-v0.0.2-hotfix/aprandomizer-MC1.19.4-hotfix-0.0.2.jar"
-DEFAULT_DIG_FORGE_URL = "https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.4-45.3.15/forge-1.19.4-45.3.15-installer.jar"
-DEFAULT_DIG_JAVA_VERSION = "17"
-
+# 1 or more digits followed by m or g, then optional b
 max_heap_re = re.compile(r"^\d+[mMgG][bB]?$")
 
-
-def prompt_yes_no(prompt):
-    yes_inputs = {'yes', 'ye', 'y'}
-    no_inputs = {'no', 'n'}
-    while True:
-        choice = input(prompt + " [y/n] ").lower()
-        if choice in yes_inputs:
-            return True
-        elif choice in no_inputs:
-            return False
-        else:
-            print('Please respond with "y" or "n".')
+DEFAULT_DIG_JAVA_VERSION = "17"
+DEFAULT_DIG_FORGE_URL = "https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.4-45.3.15/forge-1.19.4-45.3.15-installer.jar"
+DEFAULT_DIG_MOD_URL = "https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/download/dig-v0.0.2-hotfix/aprandomizer-MC1.19.4-hotfix-0.0.2.jar"
 
 
 def try_auto_launch_minecraft():
+    """
+    Launch Minecraft using the 'mc_launch' host.yaml setting if provided.
+    """
     settings = get_settings()
     mc_settings = settings.minecraft_dig_options
+
     mc_launch = mc_settings.mc_launch
-    if mc_launch:
-        try:
-            print(f"Executing: {mc_launch}")
-            subprocess.Popen(mc_launch, shell=True)
-            print(f"[Minecraft Dig] Auto-launched Minecraft: {mc_launch}")
-        except Exception as e:
-            print(f"[Minecraft Dig] Failed to auto-launch Minecraft: {e}")
+    forge_dir = os.path.expanduser(str(mc_settings.forge_directory))
+    max_heap  = mc_settings.max_heap_size
+
+    if not mc_launch:
+        return
+
+    # Pass the entire command as a string to Popen with shell=True
+    try:
+        print(f"Executing: {mc_launch}")
+        subprocess.Popen(mc_launch, shell=True)
+        print(f"[Minecraft Dig Client] Auto-launched Minecraft: {mc_launch}")
+    except Exception as e:
+        print(f"[Minecraft Dig Client] Failed to auto-launch Minecraft: {e}")
 
 
 def wait_for_server_ready(forge_dir: str, timeout: int = 120):
+    """
+    Wait until the Minecraft server prints the "Done (...)" line indicating it's fully started.
+    Only reacts to new log entries after this function is called.
+    """
     log_file = os.path.join(forge_dir, "logs", "latest.log")
     start_time = time.time()
+
+    # Wait until the log file exists
     while not os.path.isfile(log_file):
         if time.time() - start_time > timeout:
-            raise TimeoutError("Timeout waiting for latest.log")
+            raise TimeoutError("Timeout waiting for latest.log to appear")
         time.sleep(0.5)
-    last_size = os.path.getsize(log_file)
+
+    print(f"[Minecraft Dig Client] Waiting for server to be ready (reading {log_file})...")
+
+    # Track position in file
+    last_size = os.path.getsize(log_file)  # <-- start at the end, ignore old content
+
     while True:
-        current_size = os.path.getsize(log_file)
-        if current_size < last_size:
-            last_size = 0
-        with open(log_file, "r", encoding="utf-8") as f:
-            f.seek(last_size)
-            lines = f.readlines()
-            last_size = f.tell()
-        for line in lines:
-            if "Done (" in line and ")! For help, type \"help\"" in line:
-                print("[Minecraft Dig] Server is ready!")
-                return
+        try:
+            current_size = os.path.getsize(log_file)
+            if current_size < last_size:
+                # Log was rotated/recreated
+                last_size = 0
+
+            with open(log_file, "r", encoding="utf-8") as f:
+                f.seek(last_size)
+                lines = f.readlines()
+                last_size = f.tell()
+
+            for line in lines:
+                if "Done (" in line and ")! For help, type \"help\"" in line:
+                    print("[Minecraft Dig Client] Server is ready!")
+                    return
+
+        except (OSError, IOError):
+            pass  # File temporarily locked
+
         if time.time() - start_time > timeout:
-            raise TimeoutError("Timeout waiting for server ready")
+            raise TimeoutError("Timeout waiting for server to be ready")
+
         time.sleep(0.5)
 
 
 def find_ap_randomizer_jar(forge_dir):
+    """Create mods folder if needed; find AP randomizer jar; return None if not found."""
     mods_dir = os.path.join(forge_dir, 'mods')
-    if not os.path.isdir(mods_dir):
+    if os.path.isdir(mods_dir):
+        for entry in os.scandir(mods_dir):
+            if entry.name.startswith("aprandomizer") and entry.name.endswith(".jar"):
+                logging.info(f"Found AP randomizer mod: {entry.name}")
+                return entry.name
+        return None
+    else:
         os.mkdir(mods_dir)
-    for entry in os.scandir(mods_dir):
-        if entry.name.startswith("aprandomizer") and entry.name.endswith(".jar"):
-            logging.info(f"Found Dig mod: {entry.name}")
-            return entry.name
-    return None
+        logging.info(f"Created mods folder in {forge_dir}")
+        return None
 
 
 def convert_apmcdig_to_base64(input_path: str, output_path: str) -> None:
+    """
+    Converts an apmcdig file into a base64-encoded JSON text file.
+    Supports BOTH:
+    - New-format ZIP-based .apmcdig (with data.json)
+    - Old-format base64 JSON .apmcdig (already encoded)
+    """
+
+    # Case 1: NEW FORMAT (ZIP PROCEDURE PATCH)
     if zipfile.is_zipfile(input_path):
         with zipfile.ZipFile(input_path, 'r') as zf:
             if "data.json" not in zf.namelist():
                 raise ValueError("ZIP .apmcdig missing data.json!")
+
             raw_json = zf.read("data.json").decode("utf-8")
             encoded = b64encode(raw_json.encode("utf-8")).decode("utf-8")
+
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(encoded)
-        print(f"[Dig] Converted ZIP {input_path} → base64 JSON {output_path}")
+
+        print(f"[apmcdig] Converted ZIP {input_path} → base64 JSON {output_path}")
         return
+
+    # Case 2: OLD FORMAT (BASE64 JSON)
     else:
         with open(input_path, "r", encoding="utf-8") as f:
             content = f.read().strip()
+
+        # Validate it's actually base64
         try:
-            decoded = b64decode(content).decode("utf-8")
-            json.loads(decoded)
+            decoded = b64decode(content).decode('utf-8')
+            json.loads(decoded)  # ensure it is valid JSON
         except Exception as e:
             raise ValueError(f"Invalid old-format .apmcdig file: {input_path}") from e
+
+        # Just copy it — it’s already base64
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(content)
-        print(f"[Dig] Passed through old-format base64 file: {input_path} → {output_path}")
+
+        print(f"[apmcdig] Passed through old-format base64 file: {input_path} → {output_path}")
+        return
 
 
 def replace_apmcdig_files(forge_dir: str, zip_apmcdig_path: str) -> None:
+    """
+    Takes the AP-generated ZIP-style .apmc file and converts it into
+    a Forge-compatible base64 .apmcdig file inside the server directory.
+    """
+
+    # Where Forge expects the final base64 file
     target_apdata = os.path.join(forge_dir, "APData")
     os.makedirs(target_apdata, exist_ok=True)
+
+    # Remove any existing .apmcdig files (keep folder clean)
     for entry in os.scandir(target_apdata):
         if entry.name.endswith(".apmc"):
             os.remove(entry.path)
             print(f"Removed old patch: {entry.name}")
+
+    # Forge expects the same apmc but base64 contents
     base_name = os.path.splitext(os.path.basename(zip_apmcdig_path))[0] + ".apmc"
-    base64_apmc_path = os.path.join(target_apdata, base_name)
-    convert_apmcdig_to_base64(zip_apmcdig_path, base64_apmc_path)
-    print(f"Converted {zip_apmcdig_path} → Forge base64 {base64_apmc_path}")
+    base64_apmcdig_path = os.path.join(target_apdata, base_name)
+
+    # Convert ZIP → base64 JSON text
+    convert_apmcdig_to_base64(zip_apmcdig_path, base64_apmcdig_path)
+
+    print(f"Converted {zip_apmcdig_path} → Forge base64 {base64_apmcdig_path}")
+
+
+def read_apmcdig_file(apmcdig_path: str):
+    """
+    Reads either:
+    - NEW FORMAT: ZIP containing data.json
+    - OLD FORMAT: base64 JSON text
+    """
+    if not os.path.isfile(apmcdig_path):
+        raise FileNotFoundError(f"apmcdig file not found: {apmcdig_path}")
+
+    # NEW format: ZIP procedure patch
+    if zipfile.is_zipfile(apmcdig_path):
+        with zipfile.ZipFile(apmcdig_path, 'r') as zf:
+            if "data.json" not in zf.namelist():
+                raise ValueError("apmcdig ZIP missing data.json")
+            raw = zf.read("data.json").decode("utf-8")
+            return json.loads(raw)
+
+    # OLD format: base64 JSON text
+    with open(apmcdig_path, "r", encoding="utf-8") as f:
+        content = f.read().strip()
+
+    try:
+        decoded = b64decode(content).decode("utf-8")
+        return json.loads(decoded)
+    except Exception:
+        raise ValueError("apmcdig file is neither ZIP nor valid base64 JSON")
 
 
 def update_mod(forge_dir, url: str):
+    """Check mod version, download new mod from GitHub releases page if needed. """
     ap_randomizer = find_ap_randomizer_jar(forge_dir)
+    os.path.basename(url)
+    if ap_randomizer is not None:
+        logging.info(f"Your current mod is {ap_randomizer}.")
+    else:
+        logging.info(f"You do not have the AP randomizer mod installed.")
+
     if ap_randomizer != os.path.basename(url):
-        logging.info(f"A new release of Dig mod was found: {os.path.basename(url)}")
-        if prompt_yes_no("Would you like to update?"):
-            old_ap_mod = os.path.join(forge_dir, 'mods', ap_randomizer) if ap_randomizer else None
+        logging.info(f"A new release of the Minecraft AP randomizer mod was found: "
+                     f"{os.path.basename(url)}")
+        if yes_no("Minecraft Dig Client", "Would you like to update?"):
+            old_ap_mod = os.path.join(forge_dir, 'mods', ap_randomizer) if ap_randomizer is not None else None
             new_ap_mod = os.path.join(forge_dir, 'mods', os.path.basename(url))
-            resp = requests.get(url)
-            if resp.status_code == 200:
+            logging.info("Downloading AP randomizer mod. This may take a moment...")
+            apmod_resp = requests.get(url)
+            if apmod_resp.status_code == 200:
                 with open(new_ap_mod, 'wb') as f:
-                    f.write(resp.content)
-                if old_ap_mod:
+                    f.write(apmod_resp.content)
+                    logging.info(f"Wrote new mod file to {new_ap_mod}")
+                if old_ap_mod is not None:
                     os.remove(old_ap_mod)
+                    logging.info(f"Removed old mod file from {old_ap_mod}")
             else:
-                logging.error("Failed to download Dig mod.")
+                logging.error(f"Error retrieving the randomizer mod (status code {apmod_resp.status_code}).")
+                logging.error(f"Please report this issue on the Archipelago Discord server.")
                 sys.exit(1)
 
 
 def check_eula(forge_dir):
+    """Check if the EULA is agreed to, and prompt the user to read and agree if necessary."""
     eula_path = os.path.join(forge_dir, "eula.txt")
     if not os.path.isfile(eula_path):
+        # Create eula.txt
         with open(eula_path, 'w') as f:
-            f.write(f"#By changing the setting below to TRUE you are indicating your agreement to our EULA\n")
-            f.write(f"eula=false\n")
+            f.write("#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula).\n")
+            f.write(f"#{strftime('%a %b %d %X %Z %Y')}\n")
+            f.write("eula=false\n")
     with open(eula_path, 'r+') as f:
         text = f.read()
         if 'false' in text:
-            logging.info("You must agree to the Minecraft EULA to run the server.")
-            if prompt_yes_no("Do you agree to the EULA?"):
+            # Prompt user to agree to the EULA
+            logging.info("You need to agree to the Minecraft EULA in order to run the server.")
+            logging.info("The EULA can be found at https://account.mojang.com/documents/minecraft_eula")
+            if yes_no("Minecraft Dig Client", "Do you agree to the EULA?"):
                 f.seek(0)
                 f.write(text.replace('false', 'true'))
                 f.truncate()
+                logging.info(f"Set {eula_path} to true")
             else:
                 sys.exit(0)
 
 
 def find_jdk_dir(version: str) -> str | None:
+    """get the specified versions jdk directory"""
     for entry in os.listdir():
         if os.path.isdir(entry) and entry.startswith(f"jdk{version}"):
             return os.path.abspath(entry)
 
 
 def find_jdk(version: str) -> str:
+    """get the java exe location"""
     if is_windows:
         jdk = find_jdk_dir(version)
         if jdk:
             jdk_exe = os.path.join(jdk, "bin", "java.exe")
             if os.path.isfile(jdk_exe):
                 return jdk_exe
-        return "java"
+        return "java"  # fallback
     else:
         settings = get_settings()
-        java_cmd = getattr(settings.minecraft_dig_options, "java", "java")
+        java_cmd = settings.minecraft_dig_options.java or "java"
         jdk_exe = shutil.which(java_cmd)
         if not jdk_exe:
-            raise Exception("Could not find Java.")
+            raise Exception("Could not find Java. Is Java installed on the system?")
         return jdk_exe
 
 
@@ -210,51 +319,99 @@ def download_java(java: str):
     else:
         print(f"Error downloading Java (status code {resp.status_code}).")
         print(f"If this was not expected, please report this issue on the Archipelago Discord server.")
-        if not prompt_yes_no("Continue anyways?"):
+        if not yes_no("Minecraft Dig Client", "Continue anyways?"):
             sys.exit(0)
 
 
-def is_correct_forge(forge_dir, forge_url) -> bool:
-    forge_version = forge_url.split("/")[-1].replace("forge-", "").replace("-installer.jar", "")
-    return os.path.isdir(os.path.join(forge_dir, "libraries", "net", "minecraftforge", "forge", forge_version))
+def install_forge(directory, forge_version, java_version):
+    """download and install forge"""
 
-
-def install_forge(directory, forge_url, java_version):
     java_exe = find_jdk(java_version)
-    resp = requests.get(forge_url)
-    if resp.status_code != 200:
-        raise ValueError(f"Forge installer could not be downloaded: {forge_url}")
-    forge_install_jar = os.path.join(directory, "forge_install.jar")
-    os.makedirs(directory, exist_ok=True)
-    with open(forge_install_jar, 'wb') as f:
-        f.write(resp.content)
-    print(f"Installing Forge...")
-    Popen([java_exe, "-jar", forge_install_jar, "--installServer", directory]).wait()
-    os.remove(forge_install_jar)
+    if java_exe is not None:
+        print(f"Downloading Forge {forge_version}...")
+        forge_url = f"https://maven.minecraftforge.net/net/minecraftforge/forge/{forge_version}/forge-{forge_version}-installer.jar"
+        resp = requests.get(forge_url)
+        if resp.status_code == 200:  # OK
+            forge_install_jar = os.path.join(directory, "forge_install.jar")
+            if not os.path.exists(directory):
+                os.mkdir(directory)
+            with open(forge_install_jar, 'wb') as f:
+                f.write(resp.content)
+            print(f"Installing Forge...")
+            install_process = Popen([java_exe, "-jar", forge_install_jar, "--installServer", directory])
+            install_process.wait()
+            os.remove(forge_install_jar)
 
 
-def run_forge_server(forge_dir: str, java_version: str, heap_arg: str, forge_url) -> Popen:
+def run_forge_server(forge_dir: str, java_version: str, heap_arg: str, forge_version) -> Popen:
+    """Run the Forge server."""
+
     java_exe = find_jdk(java_version)
+    if not os.path.isfile(java_exe):
+        java_exe = "java"  # try to fall back on java in the PATH
+
+    heap_arg = max_heap_re.match(heap_arg).group()
     if heap_arg[-1] in ['b', 'B']:
         heap_arg = heap_arg[:-1]
     heap_arg = "-Xmx" + heap_arg
+
     os_args = "win_args.txt" if is_windows else "unix_args.txt"
-    forge_version = forge_url.split("/")[-1].replace("forge-", "").replace("-installer.jar", "")
     args_file = os.path.join(forge_dir, "libraries", "net", "minecraftforge", "forge", forge_version, os_args)
     forge_args = []
-    if os.path.isfile(args_file):
-        with open(args_file) as argfile:
-            for line in argfile:
-                forge_args.extend(line.strip().split(" "))
+    with open(args_file) as argfile:
+        for line in argfile:
+            forge_args.extend(line.strip().split(" "))
+
     args = [java_exe, heap_arg, *forge_args, "-nogui"]
+    logging.info(f"Running Forge server: {args}")
     os.chdir(forge_dir)
     return Popen(args)
 
 
+def get_minecraft_versions(version, release_channel="release"):
+    version_file_endpoint = "https://raw.githubusercontent.com/cjmang/Minecraft_AP_Randomizer/refs/heads/master/versions/minecraft_versions.json"
+    resp = requests.get(version_file_endpoint)
+    local = False
+    if resp.status_code == 200:  # OK
+        try:
+            data = resp.json()
+        except requests.exceptions.JSONDecodeError:
+            logging.warning(f"Unable to fetch version update file, using local version. (status code {resp.status_code}).")
+            local = True
+    else:
+        logging.warning(f"Unable to fetch version update file, using local version. (status code {resp.status_code}).")
+        local = True
+
+    if local:
+        with open(Utils.user_path("minecraft_versions.json"), 'r') as f:
+            data = json.load(f)
+    else:
+        with open(Utils.user_path("minecraft_versions.json"), 'w') as f:
+            json.dump(data, f)
+
+    try:
+        if version:
+            return next(filter(lambda entry: entry["version"] == version, data[release_channel]))
+        else:
+            return resp.json()[release_channel][0]
+    except (StopIteration, KeyError):
+        logging.error(f"No compatible mod version found for client version {version} on \"{release_channel}\" channel.")
+        if release_channel != "release":
+            logging.error("Consider switching \"release_channel\" to \"release\" in your Host.yaml file")
+        else:
+            logging.error("No suitable mod found on the \"release\" channel. Please Contact us on discord to report this error.")
+        sys.exit(0)
+
+
+def is_correct_forge(forge_dir, forge_version) -> bool:
+    if os.path.isdir(os.path.join(forge_dir, "libraries", "net", "minecraftforge", "forge", forge_version)):
+        return True
+    return False
+
 def add_to_launcher_components():
     component = Component(
         "Minecraft Dig Client",
-        func=run_client,
+        func=run_client_threaded,
         component_type=Type.CLIENT,
         file_identifier=SuffixIdentifier(".apmcdig"),
         cli=True
@@ -262,66 +419,151 @@ def add_to_launcher_components():
     components.append(component)
 
 
+def run_client_threaded(*args):
+    threading.Thread(target=run_client, args=args, daemon=True).start()
+
+
 def run_client(*args):
-    Utils.init_logging("MinecraftDigClient")
+    Utils.init_logging("MinecraftClient")
     parser = argparse.ArgumentParser()
-    parser.add_argument("apmcdig_file", default=None, nargs='?', help="Path to a Minecraft Dig .apmcdig file")
+    parser.add_argument("apmcdig_file", default=None, nargs='?', help="Path to an Archipelago Minecraft data file (.apmcdig)")
     parser.add_argument('--install', '-i', dest='install', default=False, action='store_true',
-                        help="Install Java and Forge without launching.")
-    parser.add_argument('--java', '-j', dest='java', type=str, help="Java version to use")
-    parser.add_argument('--forge', '-f', dest='forge', type=str, help="Forge installer URL")
-    parser.add_argument('--mod', '-m', dest='mod', type=str, help="Override Dig mod URL from host.yaml")
+                        help="Download and install Java and the Forge server. Does not launch the client afterwards.")
+    parser.add_argument('--release_channel', '-r', dest="channel", type=str, action='store',
+                        help="Specify release channel to use.")
+    parser.add_argument('--java', '-j', metavar='17', dest='java', type=str, default=False, action='store',
+                        help="specify java version.")
+    parser.add_argument('--forge', '-f', metavar='1.18.2-40.1.0', dest='forge', type=str, default=False, action='store',
+                        help="specify forge version. (Minecraft Version-Forge Version)")
+    parser.add_argument('--mod', '-m', dest='mod', type=str,
+                        help="Override Dig mod URL from host.yaml")
+
     args = parser.parse_args(args)
+    apmcdig_file = os.path.abspath(args.apmcdig_file) if args.apmcdig_file else None
+
+    # Change to executable's working directory
+    os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
     settings = get_settings()
     mc_settings = settings.minecraft_dig_options
-    forge_dir = os.path.expanduser(str(mc_settings.forge_directory))
-    max_heap = getattr(mc_settings, "max_heap_size", "2G")
 
-    java_version = getattr(mc_settings, "java_version", "") or args.java or DEFAULT_DIG_JAVA_VERSION
-    forge_url = getattr(mc_settings, "forge_url", "") or args.forge or DEFAULT_DIG_FORGE_URL
-    mod_url = getattr(mc_settings, "dig_mod_url", "") or args.mod or DEFAULT_DIG_MOD_URL
-    java = getattr(mc_settings, "java", "")
-    java_dir = find_jdk_dir(java_version)
+    mc_launch = mc_settings.mc_launch
+    forge_dir = os.path.expanduser(str(mc_settings.forge_directory))
+    max_heap  = mc_settings.max_heap_size
+
+    #channel = args.channel or mc_settings.release_channel
+
+    apmcdig_data = None
+    #data_version = args.data_version or None
+    data_version = args.mod or None
+
+    if apmcdig_file is None and not args.install:
+        apmcdig_file = Utils.open_filename('Select apmcdig file', (('apmcdig File', ('.apmcdig',)),))
+
+    if apmcdig_file is not None and data_version is None:
+        apmcdig_data = read_apmcdig_file(apmcdig_file)
+        data_version = apmcdig_data.get('client_version', '')
+
+    DIG_JAVA_VERSION = getattr(mc_settings, "java_version", "") or args.java or DEFAULT_DIG_JAVA_VERSION
+    DIG_FORGE_URL = getattr(mc_settings, "forge_url", "") or args.forge or DEFAULT_DIG_FORGE_URL
+    DIG_MOD_URL = getattr(mc_settings, "dig_mod_url", "") or args.mod or DEFAULT_DIG_MOD_URL
+
+    versions = {
+        "forge": DIG_FORGE_URL.split("/")[-1].replace("forge-", "").replace("-installer.jar",""),
+        "java": DIG_JAVA_VERSION,
+        "url": DIG_MOD_URL
+    }
+
+    forge_version = args.forge or versions["forge"]
+    java_version  = args.java or versions["java"]
+    mod_url       = versions["url"]
+    java_dir      = find_jdk_dir(java_version)
+    java_path     = getattr(mc_settings, "java", "")
 
     if args.install:
-        print("Installing Java and Forge for Minecraft Dig...")
         if is_windows:
-            print("Installing Java...")
+            print("Installing Java")
             download_java(java_version)
-        if not is_correct_forge(forge_dir, forge_url):
-            if prompt_yes_no("Forge is not installed. Would you like to install it now?"):
-                install_forge(forge_dir, forge_url, java_version)
+        if not is_correct_forge(forge_dir, forge_version):
+            print("Installing Minecraft Forge")
+            install_forge(forge_dir, forge_version, java_version)
         else:
             print("Correct Forge version already found, skipping install.")
         sys.exit(0)
 
-    apmcdig_file = os.path.abspath(args.apmcdig_file) if args.apmcdig_file else None
-    if apmcdig_file is None:
-        apmcdig_file = Utils.open_filename('Select APMCDig file', (('APMCDig File', ('.apmcdig',)),))
+    if apmcdig_data is None:
+        raise FileNotFoundError(f"apmcdig file does not exist or is inaccessible at the given location ({apmcdig_file})")
 
     if is_windows:
         if java_dir is None or not os.path.isdir(java_dir):
-            if prompt_yes_no("Did not find java directory. Download and install java now?"):
+            if yes_no("Minecraft Dig Client", "Did not find java directory. Download and install java now?"):
                 download_java(java_version)
                 java_dir = find_jdk_dir(java_version)
             if java_dir is None or not os.path.isdir(java_dir):
                 raise NotADirectoryError(f"Path {java_dir} does not exist or could not be accessed.")
 
-    if not is_correct_forge(forge_dir, forge_url):
-        if prompt_yes_no("Forge is not installed. Would you like to install it now?"):
-            install_forge(forge_dir, forge_url, java_version)
-        else:
-            sys.exit(0)
+    if not is_windows:
+        # Check if host.yaml has a Java executable path
+        java_path = getattr(mc_settings, "java", "") or ""
+        while not java_path or not os.path.isfile(java_path):
+            print(f"Java executable for version {java_version} not set or invalid.")
+    
+            # Build a detailed instructions message
+            instructions = (
+                f"Minecraft requires Java {java_version} to run.\n\n"
+                "Please make sure Java is installed on your system before continuing.\n\n"
+                "Instructions:\n"
+                f"- **macOS**: Use Homebrew (`brew install openjdk@{java_version}`) or download from https://adoptium.net/\n"
+                f"- **Linux**: Install via your package manager (e.g., `sudo apt install openjdk-{java_version}-jdk` for Ubuntu/Debian).\n"
+                "- **Other UNIX systems**: Refer to your distro's documentation.\n\n"
+                "After installing Java, press 'Yes' and select the full path to the Java executable.\n"
+                "For example:\n"
+                "  macOS with Homebrew: /opt/homebrew/opt/openjdk@{java_version}/bin/java\n"
+                "  Linux/macOS: /usr/lib/jvm/java-{java_version}-openjdk/bin/java\n"
+            )
+    
+            if yes_no("Minecraft Dig Client", instructions):
+                # Ask for the Java executable file
+                java_path = Utils.open_filename(f"Select Java {java_version} executable", (("Java Executable", ("*",)),))
+                if java_path:
+                    java_path = os.path.abspath(java_path)
+                    if not os.path.isfile(java_path):
+                        print(f"Selected path is not a valid file: {java_path}")
+                        java_path = ""
+                    elif "java" not in os.path.basename(java_path).lower():
+                        print(f"Selected file does not appear to be a Java executable: {java_path}")
+                        java_path = ""
+                    else:
+                        # Save to host.yaml
+                        mc_settings.java = java_path
+                        get_settings().save()
+                        print(f"Saved Java executable path to host.yaml: {java_path}")
+                else:
+                    java_path = ""
+            else:
+                print("Java is required to run the Minecraft Dig Client. Exiting...")
+                sys.exit(0)
 
-    replace_apmcdig_files(forge_dir, apmcdig_file)
-    update_mod(forge_dir, mod_url)
-    check_eula(forge_dir)
+    if not is_correct_forge(forge_dir, forge_version):
+        if yes_no("Minecraft Dig Client", f"Did not find forge version {forge_version} download and install it now?"):
+            install_forge(forge_dir, forge_version, java_version)
+        if not os.path.isdir(forge_dir):
+            raise NotADirectoryError(f"Path {forge_dir} does not exist or could not be accessed.")
 
     if not max_heap_re.match(max_heap):
-        raise Exception(f"Max heap size {max_heap} incorrect format. Use e.g., 2G or 512M.")
+        raise Exception(f"Max heap size {max_heap} in incorrect format. Use a number followed by M or G, e.g. 512M or 2G.")
 
-    server_process = run_forge_server(forge_dir, java_version, max_heap, forge_url)
+    update_mod(forge_dir, mod_url)
+    replace_apmcdig_files(forge_dir, apmcdig_file)
+    check_eula(forge_dir)
+    timeout = 90
+    server_process = run_forge_server(forge_dir, java_version, max_heap, forge_version)
+
+    # Wait for server to finish starting
     wait_for_server_ready(forge_dir)
+
+    # Auto-launch Minecraft
     try_auto_launch_minecraft()
+
+    # Wait for server process to exit
     server_process.wait()
