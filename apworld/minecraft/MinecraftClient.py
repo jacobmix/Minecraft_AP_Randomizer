@@ -465,6 +465,7 @@ def run_client(*args):
     java_version  = args.java or versions["java"]
     mod_url       = versions["url"]
     java_dir      = find_jdk_dir(java_version)
+    java_path     = getattr(mc_settings, "java", "")
 
     if args.install:
         if is_windows:
@@ -487,6 +488,48 @@ def run_client(*args):
                 java_dir = find_jdk_dir(java_version)
             if java_dir is None or not os.path.isdir(java_dir):
                 raise NotADirectoryError(f"Path {java_dir} does not exist or could not be accessed.")
+
+    if not is_windows:
+        # Check if host.yaml has a Java executable path
+        java_path = getattr(mc_settings, "java", "") or ""
+        while not java_path or not os.path.isfile(java_path):
+            print(f"Java executable for version {java_version} not set or invalid.")
+    
+            # Build a detailed instructions message
+            instructions = (
+                f"Minecraft requires Java {java_version} to run.\n\n"
+                "Please make sure Java is installed on your system before continuing.\n\n"
+                "Instructions:\n"
+                f"- **macOS**: Use Homebrew (`brew install openjdk@{java_version}`) or download from https://adoptium.net/\n"
+                f"- **Linux**: Install via your package manager (e.g., `sudo apt install openjdk-{java_version}-jdk` for Ubuntu/Debian).\n"
+                "- **Other UNIX systems**: Refer to your distro's documentation.\n\n"
+                "After installing Java, press 'Yes' and select the full path to the Java executable.\n"
+                "For example:\n"
+                "  macOS with Homebrew: /opt/homebrew/opt/openjdk@17/bin/java\n"
+                "  Linux/macOS: /usr/lib/jvm/java-17-openjdk/bin/java\n"
+            )
+    
+            if yes_no("Minecraft Client", instructions):
+                # Ask for the Java executable file
+                java_path = Utils.open_filename(f"Select Java {java_version} executable", (("Java Executable", ("*",)),))
+                if java_path:
+                    java_path = os.path.abspath(java_path)
+                    if not os.path.isfile(java_path):
+                        print(f"Selected path is not a valid file: {java_path}")
+                        java_path = ""
+                    elif "java" not in os.path.basename(java_path).lower():
+                        print(f"Selected file does not appear to be a Java executable: {java_path}")
+                        java_path = ""
+                    else:
+                        # Save to host.yaml
+                        mc_settings.java = java_path
+                        get_settings().save()
+                        print(f"Saved Java executable path to host.yaml: {java_path}")
+                else:
+                    java_path = ""
+            else:
+                print("Java is required to run the Minecraft client. Exiting...")
+                sys.exit(0)
 
     if not is_correct_forge(forge_dir, forge_version):
         if yes_no("Minecraft Client", f"Did not find forge version {forge_version} download and install it now?"):
