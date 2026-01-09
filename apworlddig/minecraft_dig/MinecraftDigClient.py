@@ -231,7 +231,7 @@ def update_mod(forge_dir, url: str):
     if ap_randomizer != os.path.basename(url):
         logging.info(f"A new release of the Minecraft AP randomizer mod was found: "
                      f"{os.path.basename(url)}")
-        if yes_no("Minecraft Dig Client", "Would you like to update?"):
+        if yes_no(f"Minecraft Dig Client", "Would you like to install/update the AP randomizer mod?"):
             old_ap_mod = os.path.join(forge_dir, 'mods', ap_randomizer) if ap_randomizer is not None else None
             new_ap_mod = os.path.join(forge_dir, 'mods', os.path.basename(url))
             logging.info("Downloading AP randomizer mod. This may take a moment...")
@@ -264,7 +264,10 @@ def check_eula(forge_dir):
             # Prompt user to agree to the EULA
             logging.info("You need to agree to the Minecraft EULA in order to run the server.")
             logging.info("The EULA can be found at https://account.mojang.com/documents/minecraft_eula")
-            if yes_no("Minecraft Dig Client", "Do you agree to the EULA?"):
+            if yes_no("Minecraft Dig Client",
+                "Do you agree to the EULA?\n"
+                "https://www.minecraft.net/en-us/eula"
+            ):
                 f.seek(0)
                 f.write(text.replace('false', 'true'))
                 f.truncate()
@@ -518,8 +521,8 @@ def run_client(*args):
                 "- **Other UNIX systems**: Refer to your distro's documentation.\n\n"
                 "After installing Java, press 'Yes' and select the full path to the Java executable.\n"
                 "For example:\n"
-                "  macOS with Homebrew: /opt/homebrew/opt/openjdk@{java_version}/bin/java\n"
-                "  Linux/macOS: /usr/lib/jvm/java-{java_version}-openjdk/bin/java\n"
+                f"  macOS with Homebrew: /opt/homebrew/opt/openjdk@{java_version}/bin/java\n"
+                f"  Linux/macOS: /usr/lib/jvm/java-{java_version}-openjdk/bin/java\n"
             )
     
             if yes_no("Minecraft Dig Client", instructions):
