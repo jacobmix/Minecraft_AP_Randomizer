@@ -167,8 +167,8 @@ def convert_apmcdig_to_base64(input_path: str, output_path: str) -> None:
 
 def replace_apmcdig_files(forge_dir: str, zip_apmcdig_path: str) -> None:
     """
-    Takes the AP-generated ZIP-style .apmc file and converts it into
-    a Forge-compatible base64 .apmcdig file inside the server directory.
+    Takes the AP-generated ZIP-style .apmcdig file and converts it into
+    a Forge-compatible base64 .apmc file inside the server directory.
     """
 
     # Where Forge expects the final base64 file
