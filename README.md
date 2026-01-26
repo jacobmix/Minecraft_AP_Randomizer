@@ -1,5 +1,5 @@
 # Instructions:
-0. Recommend installing latest stable [Archipelago](<https://github.com/ArchipelagoMW/Archipelago/releases/latest>) version (0.6.5) with "clean libs" ticked on.
+0. Recommend installing latest stable [Archipelago](<https://github.com/ArchipelagoMW/Archipelago/releases/latest>) with "clean libs" ticked on. (Also try if client won't open or see ``no attribute 'mc_launch'``)
 1. Install the [minecraft.apworld](https://github.com/jacobmix/Minecraft_AP_Randomizer/releases/latest/download/minecraft.apworld) hotfix (double click it), restart AP, and 'Generate Template Options' in the launcher.
 2. Use 'Option Creator' in the launcher to create your Minecraft player yaml (or edit it manually with a text editor like [Notepad++](<https://notepad-plus-plus.org/downloads/>))
    - Give yaml to host or put yaml(s) in the ``Players`` folder, and press "Generate" to get a multiworld ``.zip`` in the ``output`` folder<br/>
@@ -10,7 +10,7 @@
      Note: Each patch is file is it's own server. If you wanna run multiple. Run client once with patch. Then copy APData folder for each.  
 3. Get ``.apmc`` patch file from either the room on the site/host themselves/extracted multiworld zip.
 4. Open Archipelago Launcher, and open the Minecraft Client.
-5. Client should ask for ``.apmc`` file. Point it to the one received from room/host/zip.
+5. Client will ask for ``.apmc`` file. Point it to the one received from room/host/zip. (If no prompts try running ``ArchipelagoLauncherDebug.exe``)
 6. There will be prompts to install Java, Forge, and the randomizer mod (if none are installed). Say yes to all.
 7. Manually open [Minecraft Java Edition](<https://www.minecraft.net/en-us/store/minecraft-java-edition>) (v1.20.4), go to ``Multiplayer > Direct Connection``, type (literally):<br/>
 ``localhost`` in the server address, and join. (Or IP of player running the Forge Server with ``.apmc``)
@@ -74,7 +74,7 @@ Firewall/port:
 > - Allow Forge Server through firewall  
 >   - Open: ``control.exe`` (Searching in Windows)  
 >   - ``Control Panel\All Control Panel Items\Windows Defender Firewall\Allowed apps``>``Change Settings (Admin)``>``Allow another app``>``Browse``>``Forge-x.jar`` >``Add``>``Allow apps``  
-> - PortForward [mod](<https://modrinth.com/mod/e4mc/version/5.3.1-forge>) Place in ``mods`` folder of Forge server. Or you can use [this](<https://gist.github.com/jacobmix/ed6a0dcf3188f4843e414099fdd63cc4>) for any ports.  
+> - PortForward [mod](<https://modrinth.com/mod/dedicatedmcupnp/version/uru0Bn9t>) or [e4mc](<https://modrinth.com/mod/e4mc/version/5.3.1-forge>). Place in ``mods`` folder of Forge server. Or try [this](<https://gist.github.com/jacobmix/ed6a0dcf3188f4843e414099fdd63cc4>). 
 
 ## Tips:  
 Show file extensions: <https://www.howtogeek.com/205086/beginner-how-to-make-windows-show-file-extensions/>  
