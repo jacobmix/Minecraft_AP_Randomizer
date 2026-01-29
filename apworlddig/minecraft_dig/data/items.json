@@ -28,6 +28,7 @@
 	"progression_items": [
 		"Progressive Pickaxe",
 		"Progressive Shovel",
+		"Progressive Axe",
 		"Progressive Haste"
 	],
 	"useful_items": [
@@ -54,6 +55,7 @@
 	"required_pool": {
 	    "Progressive Pickaxe": 6,
 	    "Progressive Shovel": 4,
+	    "Progressive Axe": 4,
 	    "Progressive Haste": 3,
 	    "True Golden Pick": 8,
 		"Progressive Excavation" : 3
