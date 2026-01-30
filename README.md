@@ -41,7 +41,7 @@ Or you type: ``/op <Minecraft Username>`` in forge server terminal. Then in-game
 [Example](<https://minecraft.wiki/w/Commands/advancement>): ``/advancement grant @a only aprandomizer:archipelago/get_wood``  
 If your slot is too broken you can use the: [Slow Release Client](https://github.com/gjgfuj/AP-SlowRelease/releases/latest) (Requires [Universal Tracker](<https://github.com/FarisTheAncient/Archipelago/releases?q=Tracker>))  
 
- ``No dataPackage found`` that's fine. It's an expected message, and you won't get a message when one has been made.  
+``No dataPackage found`` that's fine. It's an expected message, and you won't get a message when one has been made.  
 
 ``IncompatibleVersion`` check you're on Minecraft version 1.20.4.  
 
