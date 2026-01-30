@@ -1,6 +1,6 @@
 # Instructions:
-0. Recommend installing latest stable [Archipelago](<https://github.com/ArchipelagoMW/Archipelago/releases/latest>) with "clean libs" ticked on. (Also try if client won't open or see ``no attribute 'mc_launch'``)
-1. Install the [minecraft.apworld](https://github.com/jacobmix/Minecraft_AP_Randomizer/releases/latest/download/minecraft.apworld) hotfix (double click it), restart AP, and 'Generate Template Options' in the launcher.
+0. Recommend installing latest stable [Archipelago](<https://github.com/ArchipelagoMW/Archipelago/releases/latest>) with **"clean libs" ticked on**. (Also try if client won't open or see ``no attribute 'mc_launch'``)
+1. Install the [minecraft.apworld](https://github.com/jacobmix/Minecraft_AP_Randomizer/releases/latest/download/minecraft.apworld) hotfix (double click it), **FULLY RESTART ARCHIPELAGO**, and 'Generate Template Options' in the launcher.
 2. Use 'Option Creator' in the launcher to create your Minecraft player yaml (or edit it manually with a text editor like [Notepad++](<https://notepad-plus-plus.org/downloads/>))
    - Give yaml to host or put yaml(s) in the ``Players`` folder, and press "Generate" to get a multiworld ``.zip`` in the ``output`` folder<br/>
    (Terminal window will close if gen successful)
@@ -57,6 +57,9 @@ minecraft_options:
 
 ``missing/not found win_args``, ``wrong/no .apmc``, ``UnicodeDecodeError``, ``getsockopt``, ``Module 'world.minecraft' has no attribute`` or crashing:  
 Delete ``Minecraft Forge server`` and redo setup. Backup ``APData`` & ``Archipelago-#-X``.  
+
+If Forge server gives ``OutOfMemoryError`` and you see ``_JAVA_OPTIONS``. Then delete ``_JAVA_OPTIONS`` from Environment Variables.
+Either delete in Windows [sysdm.cpl](<https://superuser.com/questions/949560/how-do-i-set-system-environment-variables-in-windows-10>) or download & run [Rapid Environment Editor](<https://www.rapidee.com/en/download>) as admin.
 
 If you see in your forge server logs: ``java.io.IOException: The process cannot access the file``  
 Something might be blocking files. If you're syncing the Archipelago folder with OneDrive disable that.  
