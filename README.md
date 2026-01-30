@@ -43,8 +43,6 @@ If your slot is too broken you can use the: [Slow Release Client](https://github
 
  ``No dataPackage found`` that's fine. It's an expected message, and you won't get a message when one has been made.  
 
-Connect command don't work: You need to be on the server. Direct connect to ``localhost``.  
-
 ``IncompatibleVersion`` check you're on Minecraft version 1.20.4.  
 
 Linux: ``IllegalArgumentException``  
@@ -61,9 +59,9 @@ Delete ``Minecraft Forge server`` and redo setup. Backup ``APData`` & ``Archipel
 If Forge server gives ``OutOfMemoryError`` and you see ``_JAVA_OPTIONS``. Then delete ``_JAVA_OPTIONS`` from Environment Variables.
 Either delete in Windows [sysdm.cpl](<https://superuser.com/questions/949560/how-do-i-set-system-environment-variables-in-windows-10>) or download & run [Rapid Environment Editor](<https://www.rapidee.com/en/download>) as admin.
 
-If you see in your forge server logs: ``java.io.IOException: The process cannot access the file``  
-Something might be blocking files. If you're syncing the Archipelago folder with OneDrive disable that.  
-May also be you're running a forge server already. Close it. Else it could be your anti-virus:  
+If you see in your forge server logs: ``java.io.IOException: The process cannot access the file``
+Something is blocking files. Don't cloud sync the Archipelago  directory with OneDrive, ect.
+Maybe running forge server already. Close any java process with task manager. Else could be your anti-virus:
 > - Windows default anti-virus: Search (Windows Key+S): "Windows Security", and open it.  
 >   - Virus & threat protection>Protection history>Click newest top one>ADMIN prompt: Yes>See if "Affected items" is anything Archipelago/Minecraft related. If so follow this next step:  
 >   - Virus/protection>Manage settings>Add or remove exclusions>ADMIN prompt: Yes>Add an exclusion>Folder>"Archipelago, Minecraft, and patch location directories"  
