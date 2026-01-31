@@ -11,6 +11,7 @@ from worlds.AutoWorld import World
 
 from . import Constants
 from .ItemPool import build_item_pool, get_junk_item_names
+from .Options import MinecraftDigOptions
 from .Rules import set_rules
 from .MinecraftDigPatch import MinecraftDigProcedurePatch
 from .MinecraftDigClient import add_to_launcher_components
@@ -74,6 +75,8 @@ class MinecraftDigWorld(World):
     Minecraft Dig - dig a hole.
     """
     game = GAME_NAME
+    options_dataclass = MinecraftDigOptions
+    options: MinecraftDigOptions
     settings: typing.ClassVar[MinecraftDigSettings] = MinecraftDigSettings()
     topology_present = False
 
@@ -90,6 +93,7 @@ class MinecraftDigWorld(World):
             'player_id': self.player,
             'client_version': client_version,
             'race': self.multiworld.is_race,
+            'chunk_count': self.options.chunk_count.value,
         }
 
     def create_item(self, name: str) -> Item:
@@ -115,6 +119,7 @@ class MinecraftDigWorld(World):
         return item
 
     def create_regions(self) -> None:
+        chunk_count = self.options.chunk_count.value
         # Create regions and generate location names
         for region_name, exits, layer_range in Constants.region_info["regions"]:
             r = Region(region_name, self.player, self.multiworld)
@@ -123,13 +128,14 @@ class MinecraftDigWorld(World):
             for exit_name in exits:
                 r.exits.append(Entrance(self.player, exit_name, r))
 
-            # generate Location's from range
+            # generate Location's from range, one per chunk per layer
             if layer_range is not None:
-                for layerID in range(layer_range["top"], layer_range["bottom"]-1, -1):
-                    loc_name = f"Layer {layerID}"
-                    loc = MinecraftDigLocation(self.player, loc_name,
-                                            self.location_name_to_id.get(loc_name, None), r)
-                    r.locations.append(loc)
+                for c in range(chunk_count):
+                    for layerID in range(layer_range["top"], layer_range["bottom"]-1, -1):
+                        loc_name = f"Chunk {c} Layer {layerID}"
+                        loc = MinecraftDigLocation(self.player, loc_name,
+                                                self.location_name_to_id.get(loc_name, None), r)
+                        r.locations.append(loc)
 
             self.multiworld.regions.append(r)
 
@@ -140,6 +146,9 @@ class MinecraftDigWorld(World):
             e.connect(r)
 
     def create_items(self) -> None:
+        # Give starting tools so the player can dig from the start
+        for name in ["Progressive Pickaxe", "Progressive Shovel", "Progressive Axe"]:
+            self.multiworld.push_precollected(self.create_item(name))
         self.multiworld.itempool += build_item_pool(self)
 
     set_rules = set_rules
