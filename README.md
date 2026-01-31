@@ -100,8 +100,8 @@ Plando players might also want host to edit ``plando_options`` to ``bosses, item
 
 ## Manual install Software links
 - [Minecraft Forge Download Page](<https://files.minecraftforge.net/net/minecraftforge/forge/>)
-- [Minecraft Archipelago Randomizer Mod Releases Page](<https://github.com/cjmang/Minecraft_AP_Randomizer/releases/tag/0.1.3_hotfix>)
-- [Minecraft Dig Archipelago Randomizer Mod Releases Page](<https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/tag/dig-v0.0.2-hotfix>)
+- [Minecraft Archipelago Randomizer Mod Releases Page](<https://github.com/cjmang/Minecraft_AP_Randomizer/releases/>)
+- [Minecraft Dig Archipelago Randomizer Mod Releases Page](<https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/>)
    - **DO NOT INSTALL THESE MODS ON YOUR CLIENT**
 - [Java 17 Download Page](<https://docs.aws.amazon.com/corretto/latest/corretto-17-ug/downloads-list.html>)
 
