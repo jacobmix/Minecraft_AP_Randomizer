@@ -34,10 +34,6 @@ atexit.register(input, "Press enter to exit.")
 # 1 or more digits followed by m or g, then optional b
 max_heap_re = re.compile(r"^\d+[mMgG][bB]?$")
 
-DEFAULT_DIG_JAVA_VERSION = "17"
-DEFAULT_DIG_FORGE_URL = "https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.4-45.3.15/forge-1.19.4-45.3.15-installer.jar"
-DEFAULT_DIG_MOD_URL = "https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/download/dig-v0.0.2-hotfix/aprandomizer-MC1.19.4-hotfix-0.0.2.jar"
-
 
 def try_auto_launch_minecraft():
     """
@@ -372,7 +368,7 @@ def run_forge_server(forge_dir: str, java_version: str, heap_arg: str, forge_ver
 
 
 def get_minecraft_versions(version, release_channel="release"):
-    version_file_endpoint = "https://raw.githubusercontent.com/cjmang/Minecraft_AP_Randomizer/refs/heads/master/versions/minecraft_versions.json"
+    version_file_endpoint = "https://raw.githubusercontent.com/AshIndigo/Minecraft_AP_Randomizer/refs/heads/dig-hotfix/versions/minecraft_dig_versions.json"
     resp = requests.get(version_file_endpoint)
     local = False
     if resp.status_code == 200:  # OK
@@ -454,7 +450,7 @@ def run_client(*args):
     forge_dir = os.path.expanduser(str(mc_settings.forge_directory))
     max_heap  = mc_settings.max_heap_size
 
-    #channel = args.channel or mc_settings.release_channel
+    channel = args.channel or mc_settings.release_channel
 
     apmcdig_data = None
     #data_version = args.data_version or None
@@ -467,15 +463,7 @@ def run_client(*args):
         apmcdig_data = read_apmcdig_file(apmcdig_file)
         data_version = apmcdig_data.get('client_version', '')
 
-    DIG_JAVA_VERSION = getattr(mc_settings, "java_version", "") or args.java or DEFAULT_DIG_JAVA_VERSION
-    DIG_FORGE_URL = getattr(mc_settings, "forge_url", "") or args.forge or DEFAULT_DIG_FORGE_URL
-    DIG_MOD_URL = getattr(mc_settings, "dig_mod_url", "") or args.mod or DEFAULT_DIG_MOD_URL
-
-    versions = {
-        "forge": DIG_FORGE_URL.split("/")[-1].replace("forge-", "").replace("-installer.jar",""),
-        "java": DIG_JAVA_VERSION,
-        "url": DIG_MOD_URL
-    }
+    versions = get_minecraft_dig_versions(data_version, channel)
 
     forge_version = args.forge or versions["forge"]
     java_version  = args.java or versions["java"]
@@ -570,3 +558,4 @@ def run_client(*args):
 
     # Wait for server process to exit
     server_process.wait()
+
