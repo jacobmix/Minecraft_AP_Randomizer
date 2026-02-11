@@ -382,10 +382,10 @@ def get_minecraft_versions(version, release_channel="release"):
         local = True
 
     if local:
-        with open(Utils.user_path("minecraft_versions.json"), 'r') as f:
+        with open(Utils.user_path("minecraft_dig_versions.json"), 'r') as f:
             data = json.load(f)
     else:
-        with open(Utils.user_path("minecraft_versions.json"), 'w') as f:
+        with open(Utils.user_path("minecraft_dig_versions.json"), 'w') as f:
             json.dump(data, f)
 
     try:
@@ -434,6 +434,8 @@ def run_client(*args):
                         help="specify java version.")
     parser.add_argument('--forge', '-f', metavar='1.18.2-40.1.0', dest='forge', type=str, default=False, action='store',
                         help="specify forge version. (Minecraft Version-Forge Version)")
+    parser.add_argument('--version', '-v', metavar='9', dest='data_version', type=int, action='store',
+                        help="specify Mod data version to download.")
     parser.add_argument('--mod', '-m', dest='mod', type=str,
                         help="Override Dig mod URL from host.yaml")
 
@@ -453,8 +455,7 @@ def run_client(*args):
     channel = args.channel or mc_settings.release_channel
 
     apmcdig_data = None
-    #data_version = args.data_version or None
-    data_version = args.mod or None
+    data_version = args.data_version or None
 
     if apmcdig_file is None and not args.install:
         apmcdig_file = Utils.open_filename('Select apmcdig file', (('apmcdig File', ('.apmcdig',)),))
@@ -463,7 +464,7 @@ def run_client(*args):
         apmcdig_data = read_apmcdig_file(apmcdig_file)
         data_version = apmcdig_data.get('client_version', '')
 
-    versions = get_minecraft_dig_versions(data_version, channel)
+    versions = get_minecraft_versions(data_version, channel)
 
     forge_version = args.forge or versions["forge"]
     java_version  = args.java or versions["java"]
@@ -558,4 +559,5 @@ def run_client(*args):
 
     # Wait for server process to exit
     server_process.wait()
+
 
