@@ -17,7 +17,7 @@ from .MinecraftDigPatch import MinecraftDigProcedurePatch
 from .MinecraftDigClient import add_to_launcher_components
 
 add_to_launcher_components()
-client_version = -1
+client_version = 10
 GAME_NAME = "Minecraft Dig"
 
 class MinecraftDigSettings(settings.Group):
@@ -171,4 +171,5 @@ def mc_update_output(raw_data, server, port):
     data['server'] = server
     data['port'] = port
     return b64encode(bytes(json.dumps(data), 'utf-8'))
+
 
