@@ -13,8 +13,8 @@
 5. Client will ask for ``.apmc`` file. Point it to the one received from room/host/zip. (If no prompts try running ``ArchipelagoLauncherDebug.exe``  
    Found in the Archipelago directory. Usually at ``C:\ProgramData\Archipelago`` or simply open "Brows Files" in the Archipelago Launcher)  
 6. There will be prompts to install Java, Forge, and the randomizer mod (if none are installed). Say yes to all.
-7. Manually open [Minecraft Java Edition](<https://www.minecraft.net/en-us/store/minecraft-java-edition>) (v1.20.4), go to ``Multiplayer > Direct Connection``, type (literally):<br/>
-``localhost`` in the server address, and join. (Or IP of player running the Forge Server with ``.apmc``)
+7. Manually open [Minecraft Java Edition](<https://www.minecraft.net/en-us/store/minecraft-java-edition>) (Needs to be v1.20.4 or v1.19.4 for dig), go to ``Multiplayer > Direct Connection``,<br/>
+type (literally): ``localhost`` in the server address, and join. (Or IP of player running the Forge Server with ``.apmc``)
    - if you want other players to join your slot. You need to port forward the port, and allow the forge sever through your firewall. Minecraft Forge Server port by default is ``25565``
 8. When in-game, you will need to connect manually using ``/connect <IP> <PORT> <PASS>`` Example: ``/connect archipelago.gg 38281 GoodPass``
    - You don't need to set pass if not used.
