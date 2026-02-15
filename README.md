@@ -1,6 +1,6 @@
 # Instructions:
 0. Recommend installing latest stable [Archipelago](<https://github.com/ArchipelagoMW/Archipelago/releases/latest>) with **"clean libs" ticked on**. (Also try if client won't open or see ``no attribute 'mc_launch'``)
-1. Install the [minecraft.apworld](https://github.com/jacobmix/Minecraft_AP_Randomizer/releases/latest/download/minecraft.apworld) hotfix (double click it), and wait for the installed popup.<br/> Then **FULLY RESTART ARCHIPELAGO**, and 'Generate Template Options' in the launcher.
+1. Install the [minecraft.apworld](https://github.com/jacobmix/Minecraft_AP_Randomizer/releases) hotfix (double click it), and wait for the installed popup.<br/> Then **FULLY RESTART ARCHIPELAGO**, and 'Generate Template Options' in the launcher.
 2. Use 'Option Creator' in the launcher to create your Minecraft player yaml (or edit it manually with a text editor like [Notepad++](<https://notepad-plus-plus.org/downloads/>))
    - Give yaml to host or put yaml(s) in the ``Players`` folder, and press "Generate" to get a multiworld ``.zip`` in the ``output`` folder<br/>
    (Terminal window will close if gen successful)
@@ -91,6 +91,7 @@ Hosting locally on the same machine just use ``localhost`` for the IP. Localhost
 
 Can use something like [MultiMC](<https://multimc.org/>) to create a shortcut for Minecraft v1.20.4. Even set it to auto connect to localhost.  
 Also it's possible to set ``.apmc`` file to be opened with ``ArchipelagoLauncherDebug.exe``, and if you double click it'll instantly start the forge server.  
+You can find this in the Archipelago directory. Usually at ``C:\ProgramData\Archipelago`` or simply open "Brows Files" in the Archipelago Launcher.  
 Open ``host.yaml`` from the launcher (or look in install directory). Then edit ``mc_launch`` under ``minecraft_options`` to auto start Minecraft after the Forge Server has started.  
 
 To host a multiworld without auto collect enabled, open ``host.yaml`` with a text editor like Notepad++  
