@@ -1,6 +1,6 @@
 # Instructions:
 0. Recommend installing latest stable [Archipelago](<https://github.com/ArchipelagoMW/Archipelago/releases/latest>) with **"clean libs" ticked on**. (Also try if client won't open or see ``no attribute 'mc_launch'``)
-1. Install the [minecraft.apworld](https://github.com/jacobmix/Minecraft_AP_Randomizer/releases) hotfix (double click it), and wait for the installed popup.<br/> Then **FULLY RESTART ARCHIPELAGO**, and 'Generate Template Options' in the launcher.
+1. Install the minecraft.apworld from [releases](<https://github.com/jacobmix/Minecraft_AP_Randomizer/releases>) (double click it), and wait for the installed popup.<br/> Then **FULLY RESTART ARCHIPELAGO**, and 'Generate Template Options' in the launcher.
 2. Use 'Option Creator' in the launcher to create your Minecraft player yaml (or edit it manually with a text editor like [Notepad++](<https://notepad-plus-plus.org/downloads/>))
    - Give yaml to host or put yaml(s) in the ``Players`` folder, and press "Generate" to get a multiworld ``.zip`` in the ``output`` folder<br/>
    (Terminal window will close if gen successful)
@@ -10,7 +10,8 @@
      Note: Each patch is file is it's own server. If you wanna run multiple. Run client once with patch. Then copy APData folder for each.  
 3. Get ``.apmc`` patch file from either the room on the site/host themselves/extracted multiworld zip.
 4. Open Archipelago Launcher, and open the Minecraft Client.
-5. Client will ask for ``.apmc`` file. Point it to the one received from room/host/zip. (If no prompts try running ``ArchipelagoLauncherDebug.exe``)
+5. Client will ask for ``.apmc`` file. Point it to the one received from room/host/zip. (If no prompts try running ``ArchipelagoLauncherDebug.exe``  
+   Found in the Archipelago directory. Usually at ``C:\ProgramData\Archipelago`` or simply open "Brows Files" in the Archipelago Launcher)  
 6. There will be prompts to install Java, Forge, and the randomizer mod (if none are installed). Say yes to all.
 7. Manually open [Minecraft Java Edition](<https://www.minecraft.net/en-us/store/minecraft-java-edition>) (v1.20.4), go to ``Multiplayer > Direct Connection``, type (literally):<br/>
 ``localhost`` in the server address, and join. (Or IP of player running the Forge Server with ``.apmc``)
@@ -91,7 +92,6 @@ Hosting locally on the same machine just use ``localhost`` for the IP. Localhost
 
 Can use something like [MultiMC](<https://multimc.org/>) to create a shortcut for Minecraft v1.20.4. Even set it to auto connect to localhost.  
 Also it's possible to set ``.apmc`` file to be opened with ``ArchipelagoLauncherDebug.exe``, and if you double click it'll instantly start the forge server.  
-You can find this in the Archipelago directory. Usually at ``C:\ProgramData\Archipelago`` or simply open "Brows Files" in the Archipelago Launcher.  
 Open ``host.yaml`` from the launcher (or look in install directory). Then edit ``mc_launch`` under ``minecraft_options`` to auto start Minecraft after the Forge Server has started.  
 
 To host a multiworld without auto collect enabled, open ``host.yaml`` with a text editor like Notepad++  
