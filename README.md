@@ -94,7 +94,7 @@ Can use something like [MultiMC](<https://multimc.org/>) to create a shortcut fo
 Also it's possible to set ``.apmc`` file to be opened with ``ArchipelagoLauncherDebug.exe``, and if you double click it'll instantly start the forge server.  
 Open ``host.yaml`` from the launcher (or look in install directory). Then edit ``mc_launch`` under ``minecraft_options`` to auto start Minecraft after the Forge Server has started.  
 
-To host a multiworld without auto collect enabled, open ``host.yaml`` with a text editor like Notepad++  
+If you prefere to host a multiworld without auto collect enabled, open ``host.yaml`` with a text editor like Notepad++  
 Change ``collect_mode`` setting from ``auto`` to ``disabled``. Or ``goal`` to allow manual collect. Then generate a multiworld.  
 Other settings too. Like release mode, hint options, server password for remote admin commands, ect.  
 Plando players might also want host to edit ``plando_options`` to ``bosses, items, texts, connections``  
