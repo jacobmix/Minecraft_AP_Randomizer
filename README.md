@@ -46,8 +46,8 @@ If your slot is too broken you can use the: [Slow Release Client](https://github
 
 ``IncompatibleVersion`` check you're on Minecraft version 1.20.4.  
 
-Linux: ``IllegalArgumentException``  
-Install Java 17 <https://github.com/corretto/corretto-17/releases/latest>  
+Linux: You'll most likely have to run Archipelago with your terminal.  
+``IllegalArgumentException``: Install Java 17 <https://github.com/corretto/corretto-17/releases/latest>  
 Add the actual full path for Java to your ``host.yaml``:  
 ```yaml
 minecraft_options:
@@ -55,7 +55,7 @@ minecraft_options:
 ```
 
 ``missing/not found win_args``, ``wrong/no .apmc``, ``UnicodeDecodeError``, ``getsockopt``, ``Module 'world.minecraft' has no attribute`` or crashing:  
-Delete ``Minecraft Forge server`` and redo setup. Backup ``APData`` & ``Archipelago-#-X``.  
+Close any running Java processes, and delete ``Minecraft Forge server`` and redo setup. Backup ``APData`` & ``Archipelago-#-X``.  
 
 If Forge server gives ``OutOfMemoryError`` and you see ``_JAVA_OPTIONS``. Then delete ``_JAVA_OPTIONS`` from Environment Variables.
 Either delete in Windows [sysdm.cpl](<https://superuser.com/questions/949560/how-do-i-set-system-environment-variables-in-windows-10>) or download & run [Rapid Environment Editor](<https://www.rapidee.com/en/download>) as admin.
