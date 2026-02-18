@@ -96,7 +96,7 @@ Open ``host.yaml`` from the launcher (or look in install directory). Then edit `
 
 If you prefere to host a multiworld without auto collect enabled, open ``host.yaml`` with a text editor like Notepad++  
 Change ``collect_mode`` setting from ``auto`` to ``disabled``. Or ``goal`` to allow manual collect. Then generate a multiworld.  
-Other settings too. Like release mode, hint options, server password for remote admin commands, ect.  
+Maybe change other settings too. Like release mode, hint options, set a server password for remote admin commands (recommended), ect.  
 Plando players might also want host to edit ``plando_options`` to ``bosses, items, texts, connections``  
 
 ## Manual install Software links
