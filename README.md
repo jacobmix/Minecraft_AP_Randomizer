@@ -76,7 +76,7 @@ Firewall/port:
 > - Allow Forge Server through firewall  
 >   - Open: ``control.exe`` (Searching in Windows)  
 >   - ``Control Panel\All Control Panel Items\Windows Defender Firewall\Allowed apps``>``Change Settings (Admin)``>``Allow another app``>``Browse``>``Forge-x.jar`` >``Add``>``Allow apps``  
-> - PortForward [mod](<https://modrinth.com/mod/dedicatedmcupnp/version/uru0Bn9t>) or [e4mc](<https://modrinth.com/mod/e4mc/version/5.3.1-forge>). Place in ``mods`` folder of Forge server. Or try [this](<https://gist.github.com/jacobmix/ed6a0dcf3188f4843e414099fdd63cc4>). 
+> - PortForward [mod](<https://modrinth.com/mod/dedicatedmcupnp/version/uru0Bn9t>) + [Architectury API](<https://modrinth.com/mod/architectury-api/version/11.1.17+minecraftforge>) (or [e4mc](<https://modrinth.com/mod/e4mc/version/5.3.1-forge>)). Place in ``mods`` folder of Forge server. Or try [this](<https://gist.github.com/jacobmix/ed6a0dcf3188f4843e414099fdd63cc4>). 
 
 ## Tips:  
 Show file extensions: <https://www.howtogeek.com/205086/beginner-how-to-make-windows-show-file-extensions/>  
