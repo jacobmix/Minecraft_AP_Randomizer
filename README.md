@@ -47,8 +47,8 @@ If your slot is too broken you can use the: [Slow Release Client](https://github
 ``IncompatibleVersion`` check you're on Minecraft version 1.20.4.  
 
 Linux: You'll most likely have to run Archipelago with your terminal.  
-``IllegalArgumentException``: Install Java 17 <https://github.com/corretto/corretto-17/releases/latest>  
-Add the actual full path for Java to your ``host.yaml``:  
+``IllegalArgumentException``/``Missing required library``: Install Java 17 <https://github.com/corretto/corretto-17/releases/latest>  
+Add the actual full path for Java to your ``host.yaml`` (if it fails try a path with no spaces):  
 ```yaml
 minecraft_options:
   java: "/home/<user>/.local/share/Archipelago/jdk17.0.17_10/bin/java"
