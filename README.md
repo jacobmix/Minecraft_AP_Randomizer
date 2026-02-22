@@ -9,7 +9,7 @@
      Can have more Minecraft yamls/slots but they won't run on the same server.<br/>
      Note: Each patch is file is it's own server. If you wanna run multiple. Run client once with patch. Then copy APData folder for each.  
 3. Get ``.apmc`` patch file from either the room on the site/host themselves/extracted multiworld zip.
-4. Open Archipelago Launcher, and open the Minecraft Client.
+4. Open Archipelago Launcher. Then Minecraft Client in there. (Can hint in-game or with Text Client. Export Datapackage for item names, ect)
 5. Client will ask for ``.apmc`` file. Point it to the one received from room/host/zip. (If no prompts try running ``ArchipelagoLauncherDebug.exe``  
    Found in the Archipelago directory. Usually at ``C:\ProgramData\Archipelago`` or simply open "Brows Files" in the Archipelago Launcher)  
 6. There will be prompts to install Java, Forge, and the randomizer mod (if none are installed). Say yes to all.  
