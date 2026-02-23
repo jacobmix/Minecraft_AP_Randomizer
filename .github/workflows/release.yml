@@ -1,5 +1,9 @@
 name: Create New Release
 
+concurrency:
+  group: release-${{ github.event.inputs.branch_type }}
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:
     inputs:
@@ -10,6 +14,10 @@ on:
         options:
           - client
           - client_dig
+
+      apworld_version_override:
+        description: "Optional override (example: 0.1.5). If empty, auto-increments patch."
+        required: false
 
       category:
         description: "minecraft_versions.json category"
@@ -47,7 +55,7 @@ jobs:
         ref: master
         fetch-depth: 0
 
-    - run: sudo apt-get install jq -y
+    - run: sudo apt-get update && sudo apt-get install jq -y
 
     ############################################################
     # Determine branch logic
@@ -79,6 +87,16 @@ jobs:
       run: |
         VERSION=$(jq '[.release[], .beta[], .old[]] | max_by(.version).version + 1' versions/minecraft_versions.json)
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Check client version uniqueness
+      run: |
+        VERSION=${{ steps.clientver.outputs.VERSION }}
+        EXISTS=$(jq "[.release[], .beta[], .old[]] | any(.version == $VERSION)" versions/minecraft_versions.json)
+
+        if [ "$EXISTS" = "true" ]; then
+          echo "Client version already exists: $VERSION"
+          exit 1
+        fi
 
     ############################################################
     # Determine forge + java
@@ -138,19 +156,24 @@ jobs:
         ref: ${{ steps.vars.outputs.APWORLD_BRANCH }}
         path: apworld
 
-    - name: Determine & increment world_version
+    - name: Determine world_version
       id: apworldver
       run: |
         FILE=$(find apworld -name archipelago.json)
         CURRENT=$(jq -r '.world_version' "$FILE")
 
-        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-        PATCH=$((PATCH + 1))
-        NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+        if [ -n "${{ github.event.inputs.apworld_version_override }}" ]; then
+          NEW_VERSION="${{ github.event.inputs.apworld_version_override }}"
+        else
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+        fi
 
         jq ".world_version = \"$NEW_VERSION\"" "$FILE" > tmp.json
         mv tmp.json "$FILE"
 
+        echo "CURRENT_VERSION=$CURRENT" >> $GITHUB_OUTPUT
         echo "APWORLD_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
 
     - name: Update client_version in __init__.py
@@ -167,7 +190,42 @@ jobs:
         git push origin HEAD:${{ steps.vars.outputs.APWORLD_BRANCH }}
 
     ############################################################
-    # === BUILD JAR ===
+    # Prevent duplicate tag (after version known)
+    ############################################################
+
+    - name: Check if tag already exists
+      run: |
+        TAG="${{ steps.apworldver.outputs.APWORLD_VERSION }}${{ steps.vars.outputs.TAG_SUFFIX }}"
+        if git rev-parse "$TAG" >/dev/null 2>&1; then
+          echo "Tag already exists: $TAG"
+          exit 1
+        fi
+
+    ############################################################
+    # Determine previous tag for proper compare
+    ############################################################
+
+    - name: Get previous tag
+      id: prevtag
+      run: |
+        LAST_TAG=$(git tag --sort=-creatordate | head -n 1 || echo "")
+        echo "LAST_TAG=$LAST_TAG" >> $GITHUB_OUTPUT
+
+    - name: Build compare URL
+      id: compare
+      run: |
+        NEW_TAG="${{ steps.apworldver.outputs.APWORLD_VERSION }}${{ steps.vars.outputs.TAG_SUFFIX }}"
+
+        if [ -n "${{ steps.prevtag.outputs.LAST_TAG }}" ]; then
+          URL="https://github.com/${{ github.repository }}/compare/${{ steps.prevtag.outputs.LAST_TAG }}...$NEW_TAG"
+        else
+          URL="Initial release"
+        fi
+
+        echo "COMPARE_URL=$URL" >> $GITHUB_OUTPUT
+
+    ############################################################
+    # Build jar
     ############################################################
 
     - name: Build jar
@@ -177,7 +235,7 @@ jobs:
         ./gradlew build
 
     ############################################################
-    # === BUILD APWORLD FILE ===
+    # Build .apworld
     ############################################################
 
     - name: Prepare artifacts
@@ -200,7 +258,7 @@ jobs:
         echo "APWORLD=$APWORLD_FILE" >> $GITHUB_OUTPUT
 
     ############################################################
-    # === CREATE RELEASE ===
+    # Create GitHub Release
     ############################################################
 
     - name: Create GitHub Release
@@ -213,14 +271,14 @@ jobs:
           https://github.com/jacobmix/Minecraft_AP_Randomizer/blob/master/README.md
 
           **Full Changelog**:
-          https://github.com/jacobmix/Minecraft_AP_Randomizer/compare/
+          ${{ steps.compare.outputs.COMPARE_URL }}
 
         files: |
           release/${{ steps.artifacts.outputs.JAR }}
           release/${{ steps.artifacts.outputs.APWORLD }}
 
     ############################################################
-    # === UPDATE minecraft_versions.json ===
+    # Update minecraft_versions.json
     ############################################################
 
     - name: Update minecraft_versions.json
