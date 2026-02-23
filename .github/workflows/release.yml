@@ -16,7 +16,7 @@ on:
           - client_dig
 
       apworld_version_override:
-        description: "Optional override (example: 0.1.5). If empty, auto-increments patch."
+        description: "Optional apworld version override (example: 0.1.5). If empty, auto-increments 0.0.x."
         required: false
 
       category:
@@ -30,11 +30,11 @@ on:
           - old
 
       forge_override:
-        description: "Optional forge override"
+        description: "Optional forge override (example: 1.19.4-45.3.15)."
         required: false
 
       java_override:
-        description: "Optional java override"
+        description: "Optional java override (example: 17)."
         required: false
 
 permissions:
