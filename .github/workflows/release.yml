@@ -1,0 +1,237 @@
+name: Production Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_type:
+        description: "client or client_dig"
+        required: true
+        type: choice
+        options:
+          - client
+          - client_dig
+
+      category:
+        description: "minecraft_versions.json category"
+        required: true
+        default: release
+        type: choice
+        options:
+          - release
+          - beta
+          - old
+
+      forge_override:
+        description: "Optional forge override"
+        required: false
+
+      java_override:
+        description: "Optional java override"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    ############################################################
+    # Checkout master (controller branch)
+    ############################################################
+
+    - uses: actions/checkout@v4
+      with:
+        ref: master
+        fetch-depth: 0
+
+    - run: sudo apt-get install jq -y
+
+    ############################################################
+    # Determine branch logic
+    ############################################################
+
+    - name: Determine branch variables
+      id: vars
+      run: |
+        if [ "${{ github.event.inputs.branch_type }}" = "client_dig" ]; then
+          echo "CLIENT_BRANCH=client_dig" >> $GITHUB_OUTPUT
+          echo "APWORLD_BRANCH=apworld_dig" >> $GITHUB_OUTPUT
+          echo "APWORLD_SUBFOLDER=apworlddig" >> $GITHUB_OUTPUT
+          echo "TITLE_PREFIX=Dig apworld" >> $GITHUB_OUTPUT
+          echo "TAG_SUFFIX=_dig" >> $GITHUB_OUTPUT
+        else
+          echo "CLIENT_BRANCH=client" >> $GITHUB_OUTPUT
+          echo "APWORLD_BRANCH=apworld" >> $GITHUB_OUTPUT
+          echo "APWORLD_SUBFOLDER=apworld" >> $GITHUB_OUTPUT
+          echo "TITLE_PREFIX=Main apworld" >> $GITHUB_OUTPUT
+          echo "TAG_SUFFIX=_hotfix" >> $GITHUB_OUTPUT
+        fi
+
+    ############################################################
+    # Determine next client version integer
+    ############################################################
+
+    - name: Determine next client version
+      id: clientver
+      run: |
+        VERSION=$(jq '[.release[], .beta[], .old[]] | max_by(.version).version + 1' versions/minecraft_versions.json)
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+    ############################################################
+    # Determine forge + java
+    ############################################################
+
+    - name: Determine forge + java
+      id: forge
+      run: |
+        FILE=versions/minecraft_versions.json
+
+        if [ -n "${{ github.event.inputs.forge_override }}" ]; then
+          FORGE="${{ github.event.inputs.forge_override }}"
+        else
+          FORGE=$(jq -r '.release[0].forge' $FILE)
+        fi
+
+        if [ -n "${{ github.event.inputs.java_override }}" ]; then
+          JAVA="${{ github.event.inputs.java_override }}"
+        else
+          JAVA=$(jq -r '.release[0].java' $FILE)
+        fi
+
+        MC_VERSION=$(echo "$FORGE" | cut -d- -f1)
+
+        echo "FORGE=$FORGE" >> $GITHUB_OUTPUT
+        echo "JAVA=$JAVA" >> $GITHUB_OUTPUT
+        echo "MC_VERSION=$MC_VERSION" >> $GITHUB_OUTPUT
+
+    ############################################################
+    # === UPDATE CLIENT BRANCH ===
+    ############################################################
+
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ steps.vars.outputs.CLIENT_BRANCH }}
+        path: client
+
+    - name: Update APRandomizer.java version
+      run: |
+        FILE=$(find client -name APRandomizer.java)
+        sed -i "s/this.add([0-9]\+)/this.add(${{ steps.clientver.outputs.VERSION }})/" "$FILE"
+
+    - name: Commit client branch
+      run: |
+        cd client
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git commit -am "Release version ${{ steps.clientver.outputs.VERSION }}"
+        git push origin HEAD:${{ steps.vars.outputs.CLIENT_BRANCH }}
+
+    ############################################################
+    # === UPDATE APWORLD BRANCH ===
+    ############################################################
+
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ steps.vars.outputs.APWORLD_BRANCH }}
+        path: apworld
+
+    - name: Determine & increment world_version
+      id: apworldver
+      run: |
+        FILE=$(find apworld -name archipelago.json)
+        CURRENT=$(jq -r '.world_version' "$FILE")
+
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+        PATCH=$((PATCH + 1))
+        NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+
+        jq ".world_version = \"$NEW_VERSION\"" "$FILE" > tmp.json
+        mv tmp.json "$FILE"
+
+        echo "APWORLD_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Update client_version in __init__.py
+      run: |
+        FILE=$(find apworld -name "__init__.py")
+        sed -i "s/client_version = [0-9]\+/client_version = ${{ steps.clientver.outputs.VERSION }}/" "$FILE"
+
+    - name: Commit apworld branch
+      run: |
+        cd apworld
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git commit -am "Release apworld ${{ steps.apworldver.outputs.APWORLD_VERSION }}"
+        git push origin HEAD:${{ steps.vars.outputs.APWORLD_BRANCH }}
+
+    ############################################################
+    # === BUILD JAR ===
+    ############################################################
+
+    - name: Build jar
+      run: |
+        cd client
+        chmod +x gradlew
+        ./gradlew build
+
+    ############################################################
+    # === BUILD APWORLD FILE ===
+    ############################################################
+
+    - name: Prepare artifacts
+      id: artifacts
+      run: |
+        mkdir release
+
+        JAR=$(find client/build/libs -name "*.jar" | head -n 1)
+        NEW_JAR="aprandomizer-MC${{ steps.forge.outputs.MC_VERSION }}-${{ steps.apworldver.outputs.APWORLD_VERSION }}.jar"
+        cp "$JAR" "release/$NEW_JAR"
+
+        cd apworld/${{ steps.vars.outputs.APWORLD_SUBFOLDER }}
+        zip -r ../../release/temp.zip .
+        cd ../../release
+
+        APWORLD_FILE="${{ steps.apworldver.outputs.APWORLD_VERSION }}${{ steps.vars.outputs.TAG_SUFFIX }}.apworld"
+        mv temp.zip "$APWORLD_FILE"
+
+        echo "JAR=$NEW_JAR" >> $GITHUB_OUTPUT
+        echo "APWORLD=$APWORLD_FILE" >> $GITHUB_OUTPUT
+
+    ############################################################
+    # === CREATE RELEASE ===
+    ############################################################
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.apworldver.outputs.APWORLD_VERSION }}${{ steps.vars.outputs.TAG_SUFFIX }}
+        name: ${{ steps.vars.outputs.TITLE_PREFIX }} ${{ steps.apworldver.outputs.APWORLD_VERSION }} (MC${{ steps.forge.outputs.MC_VERSION }})
+        body: |
+          Instructions:
+          https://github.com/jacobmix/Minecraft_AP_Randomizer/blob/master/README.md
+
+          **Full Changelog**:
+          https://github.com/jacobmix/Minecraft_AP_Randomizer/compare/
+
+        files: |
+          release/${{ steps.artifacts.outputs.JAR }}
+          release/${{ steps.artifacts.outputs.APWORLD }}
+
+    ############################################################
+    # === UPDATE minecraft_versions.json ===
+    ############################################################
+
+    - name: Update minecraft_versions.json
+      run: |
+        URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.apworldver.outputs.APWORLD_VERSION }}${{ steps.vars.outputs.TAG_SUFFIX }}/${{ steps.artifacts.outputs.JAR }}"
+
+        jq ".${{ github.event.inputs.category }} |= [{\"version\": ${{ steps.clientver.outputs.VERSION }}, \"java\": \"${{ steps.forge.outputs.JAVA }}\", \"forge\": \"${{ steps.forge.outputs.FORGE }}\", \"url\": \"$URL\"}] + ." versions/minecraft_versions.json > tmp.json
+
+        mv tmp.json versions/minecraft_versions.json
+
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git commit -am "Update minecraft_versions.json for version ${{ steps.clientver.outputs.VERSION }}"
+        git push origin master
