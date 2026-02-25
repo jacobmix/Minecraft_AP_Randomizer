@@ -8,12 +8,12 @@ on:
   workflow_dispatch:
     inputs:
       branch_type:
-        description: "client or client_dig"
+        description: "Normal or Dig"
         required: true
         type: choice
         options:
-          - client
-          - client_dig
+          - jar
+          - jar_dig
 
       apworld_version_override:
         description: "Optional apworld version override (example: 0.1.5). If empty, auto-increments 0.0.x."
@@ -64,14 +64,14 @@ jobs:
     - name: Determine branch variables
       id: vars
       run: |
-        if [ "${{ github.event.inputs.branch_type }}" = "client_dig" ]; then
-          echo "CLIENT_BRANCH=client_dig" >> $GITHUB_OUTPUT
+        if [ "${{ github.event.inputs.branch_type }}" = "jar_dig" ]; then
+          echo "JAR_BRANCH=jar_dig" >> $GITHUB_OUTPUT
           echo "APWORLD_BRANCH=apworld_dig" >> $GITHUB_OUTPUT
           echo "APWORLD_SUBFOLDER=apworlddig" >> $GITHUB_OUTPUT
           echo "TITLE_PREFIX=Dig apworld" >> $GITHUB_OUTPUT
           echo "TAG_SUFFIX=_dig" >> $GITHUB_OUTPUT
         else
-          echo "CLIENT_BRANCH=client" >> $GITHUB_OUTPUT
+          echo "JAR_BRANCH=jar" >> $GITHUB_OUTPUT
           echo "APWORLD_BRANCH=apworld" >> $GITHUB_OUTPUT
           echo "APWORLD_SUBFOLDER=apworld" >> $GITHUB_OUTPUT
           echo "TITLE_PREFIX=Main apworld" >> $GITHUB_OUTPUT
@@ -79,22 +79,22 @@ jobs:
         fi
 
     ############################################################
-    # Determine next client version integer
+    # Determine next jar version integer
     ############################################################
 
-    - name: Determine next client version
-      id: clientver
+    - name: Determine next jar version
+      id: jarver
       run: |
         VERSION=$(jq '[.release[], .beta[], .old[]] | max_by(.version).version + 1' versions/minecraft_versions.json)
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-    - name: Check client version uniqueness
+    - name: Check jar version uniqueness
       run: |
-        VERSION=${{ steps.clientver.outputs.VERSION }}
+        VERSION=${{ steps.jarver.outputs.VERSION }}
         EXISTS=$(jq "[.release[], .beta[], .old[]] | any(.version == $VERSION)" versions/minecraft_versions.json)
 
         if [ "$EXISTS" = "true" ]; then
-          echo "Client version already exists: $VERSION"
+          echo "Jar version already exists: $VERSION"
           exit 1
         fi
 
@@ -126,26 +126,26 @@ jobs:
         echo "MC_VERSION=$MC_VERSION" >> $GITHUB_OUTPUT
 
     ############################################################
-    # === UPDATE CLIENT BRANCH ===
+    # === UPDATE JAR BRANCH ===
     ############################################################
 
     - uses: actions/checkout@v4
       with:
-        ref: ${{ steps.vars.outputs.CLIENT_BRANCH }}
-        path: client
+        ref: ${{ steps.vars.outputs.JAR_BRANCH }}
+        path: jar
 
     - name: Update APRandomizer.java version
       run: |
-        FILE=$(find client -name APRandomizer.java)
-        sed -i "s/this.add([0-9]\+)/this.add(${{ steps.clientver.outputs.VERSION }})/" "$FILE"
+        FILE=$(find jar -name APRandomizer.java)
+        sed -i "s/this.add([0-9]\+)/this.add(${{ steps.jarver.outputs.VERSION }})/" "$FILE"
 
-    - name: Commit client branch
+    - name: Commit jar branch
       run: |
-        cd client
+        cd jar
         git config user.name github-actions
         git config user.email github-actions@github.com
-        git commit -am "Release version ${{ steps.clientver.outputs.VERSION }}"
-        git push origin HEAD:${{ steps.vars.outputs.CLIENT_BRANCH }}
+        git commit -am "Release version ${{ steps.jarver.outputs.VERSION }}"
+        git push origin HEAD:${{ steps.vars.outputs.JAR_BRANCH }}
 
     ############################################################
     # === UPDATE APWORLD BRANCH ===
@@ -176,10 +176,10 @@ jobs:
         echo "CURRENT_VERSION=$CURRENT" >> $GITHUB_OUTPUT
         echo "APWORLD_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-    - name: Update client_version in __init__.py
+    - name: Update jar_version in __init__.py
       run: |
         FILE=$(find apworld -name "__init__.py")
-        sed -i "s/client_version = [0-9]\+/client_version = ${{ steps.clientver.outputs.VERSION }}/" "$FILE"
+        sed -i "s/jar_version = [0-9]\+/jar_version = ${{ steps.jarver.outputs.VERSION }}/" "$FILE"
 
     - name: Commit apworld branch
       run: |
@@ -230,7 +230,7 @@ jobs:
 
     - name: Build jar
       run: |
-        cd client
+        cd jar
         chmod +x gradlew
         ./gradlew build
 
@@ -243,7 +243,7 @@ jobs:
       run: |
         mkdir release
 
-        JAR=$(find client/build/libs -name "*.jar" | head -n 1)
+        JAR=$(find jar/build/libs -name "*.jar" | head -n 1)
         NEW_JAR="aprandomizer-MC${{ steps.forge.outputs.MC_VERSION }}-${{ steps.apworldver.outputs.APWORLD_VERSION }}.jar"
         cp "$JAR" "release/$NEW_JAR"
 
@@ -285,11 +285,11 @@ jobs:
       run: |
         URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.apworldver.outputs.APWORLD_VERSION }}${{ steps.vars.outputs.TAG_SUFFIX }}/${{ steps.artifacts.outputs.JAR }}"
 
-        jq ".${{ github.event.inputs.category }} |= [{\"version\": ${{ steps.clientver.outputs.VERSION }}, \"java\": \"${{ steps.forge.outputs.JAVA }}\", \"forge\": \"${{ steps.forge.outputs.FORGE }}\", \"url\": \"$URL\"}] + ." versions/minecraft_versions.json > tmp.json
+        jq ".${{ github.event.inputs.category }} |= [{\"version\": ${{ steps.jarver.outputs.VERSION }}, \"java\": \"${{ steps.forge.outputs.JAVA }}\", \"forge\": \"${{ steps.forge.outputs.FORGE }}\", \"url\": \"$URL\"}] + ." versions/minecraft_versions.json > tmp.json
 
         mv tmp.json versions/minecraft_versions.json
 
         git config user.name github-actions
         git config user.email github-actions@github.com
-        git commit -am "Update minecraft_versions.json for version ${{ steps.clientver.outputs.VERSION }}"
+        git commit -am "Update minecraft_versions.json for version ${{ steps.jarver.outputs.VERSION }}"
         git push origin master
