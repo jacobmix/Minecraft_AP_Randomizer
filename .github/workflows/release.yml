@@ -176,10 +176,10 @@ jobs:
         echo "CURRENT_VERSION=$CURRENT" >> $GITHUB_OUTPUT
         echo "APWORLD_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-    - name: Update jar_version in __init__.py
+    - name: Update client_version in __init__.py
       run: |
         FILE=$(find apworld -name "__init__.py")
-        sed -i "s/jar_version = [0-9]\+/jar_version = ${{ steps.jarver.outputs.VERSION }}/" "$FILE"
+        sed -i "s/client_version = [0-9]\+/client_version = ${{ steps.jarver.outputs.VERSION }}/" "$FILE"
 
     - name: Commit apworld branch
       run: |
