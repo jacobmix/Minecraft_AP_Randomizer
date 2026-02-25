@@ -11,11 +11,15 @@
       "java": "17",
       "forge": "1.19.4-45.3.15",
       "url": "https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/download/dig-v0.0.3-hotfix/aprandomizer-MC1.19.4-hotfix-0.0.3.jar"
+    },
+    {
+      "version": 11,
+      "java": "17",
+      "forge": "1.19.4-45.3.15",
+      "url": "https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/download/dig-v0.0.4-hotfix/aprandomizer-MC1.19.4-hotfix-0.0.4.jar"
     }
   ],
   "beta": [
-    {
-
-    }
+    {}
   ]
 }
