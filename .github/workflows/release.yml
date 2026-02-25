@@ -251,7 +251,7 @@ jobs:
         zip -r ../../release/temp.zip .
         cd ../../release
 
-        APWORLD_FILE="${{ steps.apworldver.outputs.APWORLD_VERSION }}${{ steps.vars.outputs.TAG_SUFFIX }}.apworld"
+        APWORLD_FILE="minecraft${{ steps.vars.outputs.TAG_SUFFIX == '_dig' && '_dig' || '' }}.apworld"
         mv temp.zip "$APWORLD_FILE"
 
         echo "JAR=$NEW_JAR" >> $GITHUB_OUTPUT
