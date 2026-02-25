@@ -2,9 +2,7 @@ package gg.archipelago.aprandomizer.capability.data;
 
 import com.google.common.collect.Lists;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class WorldData {
 
@@ -17,6 +15,17 @@ public class WorldData {
     private Set<Long> locations = new HashSet<>();
 
     private long index = 0;
+
+    private String serverAddress = "";
+
+    // For progressive chunks: current unlocked chunk level (1 = 1x1, 2 = 2x2, etc.)
+    private int unlockedChunkLevel = 1;
+
+    // Known players (have logged in at least once)
+    private Set<UUID> knownPlayers = new HashSet<>();
+
+    // Pending bonuses for offline players: UUID -> (BonusType -> seconds remaining)
+    private HashMap<UUID, HashMap<String, Integer>> pendingBonuses = new HashMap<>();
 
     public static final int DRAGON_KILLED = 30;
     public static final int DRAGON_SPAWNED = 20;
@@ -65,5 +74,62 @@ public class WorldData {
 
     public void setIndex(Long index) {
         this.index = index;
+    }
+
+    public String getServerAddress() {
+        return serverAddress;
+    }
+
+    public void setServerAddress(String serverAddress) {
+        this.serverAddress = serverAddress;
+    }
+
+    public int getUnlockedChunkLevel() {
+        return unlockedChunkLevel;
+    }
+
+    public void setUnlockedChunkLevel(int level) {
+        this.unlockedChunkLevel = level;
+    }
+
+    public void incrementUnlockedChunkLevel() {
+        this.unlockedChunkLevel++;
+    }
+
+    // Known players methods
+    public Set<UUID> getKnownPlayers() {
+        return knownPlayers;
+    }
+
+    public void setKnownPlayers(Set<UUID> players) {
+        this.knownPlayers = players;
+    }
+
+    public void addKnownPlayer(UUID uuid) {
+        this.knownPlayers.add(uuid);
+    }
+
+    // Pending bonuses methods
+    public HashMap<UUID, HashMap<String, Integer>> getAllPendingBonuses() {
+        return pendingBonuses;
+    }
+
+    public void setAllPendingBonuses(HashMap<UUID, HashMap<String, Integer>> bonuses) {
+        this.pendingBonuses = bonuses;
+    }
+
+    public HashMap<String, Integer> getPendingBonuses(UUID uuid) {
+        return pendingBonuses.get(uuid);
+    }
+
+    public void addPendingBonus(UUID uuid, String bonusType, int seconds) {
+        pendingBonuses.computeIfAbsent(uuid, k -> new HashMap<>());
+        HashMap<String, Integer> playerBonuses = pendingBonuses.get(uuid);
+        int currentSeconds = playerBonuses.getOrDefault(bonusType, 0);
+        playerBonuses.put(bonusType, currentSeconds + seconds);
+    }
+
+    public void clearPendingBonuses(UUID uuid) {
+        pendingBonuses.remove(uuid);
     }
 }

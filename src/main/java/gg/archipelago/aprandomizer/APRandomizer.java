@@ -8,6 +8,7 @@ import gg.archipelago.aprandomizer.common.Utils.Utils;
 import gg.archipelago.aprandomizer.managers.GoalManager;
 import gg.archipelago.aprandomizer.managers.advancementmanager.LayerManager;
 import gg.archipelago.aprandomizer.managers.itemmanager.ItemManager;
+import gg.archipelago.aprandomizer.managers.itemmanager.TemporaryBonusManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -59,11 +60,16 @@ public class APRandomizer {
     static private GoalManager goalManager;
     static private APMCData apmcData;
     static private final Set<Integer> validVersions = new HashSet<>() {{
-        this.add(10); // minecraft dig
+        this.add(11); // minecraft dig v0.1
     }};
     static private boolean jailPlayers = true;
     static private BlockPos jailCenter = BlockPos.ZERO;
     static public WorldData worldData;
+
+    // Auto-reconnect settings
+    private static int reconnectAttempts = 0;
+    private static final int MAX_RECONNECT_ATTEMPTS = 5;
+    private static String pendingReconnectAddress = null;
 
     public APRandomizer() {
         LOGGER.info("Minecraft Archipelago 1.19.4 version (-2) Randomizer initializing.");
@@ -152,9 +158,120 @@ public class APRandomizer {
         return goalManager;
     }
 
+    public static void resetReconnectAttempts() {
+        reconnectAttempts = 0;
+        pendingReconnectAddress = null;
+    }
+
+    public static void attemptReconnect(String address) {
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            Utils.sendMessageToAll("Auto-reconnect failed after " + MAX_RECONNECT_ATTEMPTS + " attempts. Use /connect to reconnect manually.");
+            LOGGER.warn("Auto-reconnect gave up after {} attempts", MAX_RECONNECT_ATTEMPTS);
+            pendingReconnectAddress = null;
+            return;
+        }
+
+        reconnectAttempts++;
+        pendingReconnectAddress = address;
+
+        Utils.sendMessageToAll("Reconnect attempt " + reconnectAttempts + "/" + MAX_RECONNECT_ATTEMPTS + " to " + address);
+        LOGGER.info("Reconnect attempt {}/{} to {}", reconnectAttempts, MAX_RECONNECT_ATTEMPTS, address);
+
+        try {
+            APClient client = getAP();
+            client.setName(apmcData.player_name);
+            client.connect(address);
+        } catch (Exception e) {
+            LOGGER.error("Reconnect attempt failed: {}", e.getMessage());
+            // Schedule next retry after 5 seconds
+            scheduleReconnectRetry(address);
+        }
+    }
+
+    public static void scheduleReconnectRetry(String address) {
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            Utils.sendMessageToAll("Auto-reconnect failed after " + MAX_RECONNECT_ATTEMPTS + " attempts. Use /connect to reconnect manually.");
+            pendingReconnectAddress = null;
+            return;
+        }
+
+        // Schedule retry after 5 seconds (100 ticks)
+        server.tell(new net.minecraft.server.TickTask(
+            server.getTickCount() + 100,
+            () -> attemptReconnect(address)
+        ));
+    }
+
+    public static String getPendingReconnectAddress() {
+        return pendingReconnectAddress;
+    }
+
     public static int getChunkSide() {
         int count = (apmcData != null) ? Math.max(apmcData.chunk_count, 1) : 1;
         return (int) Math.ceil(Math.sqrt(count));
+    }
+
+    /**
+     * Check if progressive chunks mode is enabled
+     */
+    public static boolean isProgressiveChunks() {
+        return apmcData != null && apmcData.progressive_chunks;
+    }
+
+    /**
+     * Get the current number of unlocked chunks
+     */
+    public static int getUnlockedChunks() {
+        if (worldData == null) return 1;
+        return worldData.getUnlockedChunkLevel(); // Reusing the field, now means chunk count
+    }
+
+    /**
+     * Get max chunks from apmc data
+     */
+    public static int getMaxChunks() {
+        return (apmcData != null) ? Math.max(apmcData.chunk_count, 1) : 1;
+    }
+
+    /**
+     * Expand the world barrier by one chunk (called when receiving World Barrier Expansion)
+     */
+    public static void expandWorldBarrier() {
+        if (worldData == null || server == null) return;
+
+        int maxChunks = getMaxChunks();
+        int currentChunks = worldData.getUnlockedChunkLevel();
+
+        if (currentChunks < maxChunks) {
+            worldData.incrementUnlockedChunkLevel();
+            int newChunks = worldData.getUnlockedChunkLevel();
+
+            // Update the world border
+            updateWorldBorderForChunks(newChunks);
+
+            Utils.sendMessageToAll("World Barrier Expanded! Now accessible: " + newChunks + "/" + maxChunks + " chunks");
+            LOGGER.info("World Barrier expanded to {} chunks", newChunks);
+        }
+    }
+
+    /**
+     * Update the world border to cover n chunks
+     * Border grows to fit ceil(sqrt(n)) x ceil(sqrt(n)) area
+     */
+    public static void updateWorldBorderForChunks(int numChunks) {
+        if (server == null) return;
+
+        // Calculate the grid side needed to contain numChunks
+        int side = (int) Math.ceil(Math.sqrt(numChunks));
+
+        // Calculate border size: center at middle of grid, size = grid width
+        double centerCoord = side * 8.0;
+        double borderSize = side * 16.0;
+
+        WorldBorder border = server.overworld().getWorldBorder();
+        border.setCenter(centerCoord, centerCoord);
+        border.setSize(borderSize);
+        border.setWarningBlocks(0);
     }
 
     @SubscribeEvent
@@ -195,6 +312,9 @@ public class APRandomizer {
         jailPlayers = worldData.getJailPlayers();
         layerManager.setCheckedLayers(new HashSet<>(worldData.getLocations()));
 
+        // Load known players for temporary bonus system
+        TemporaryBonusManager.loadKnownPlayers(worldData.getKnownPlayers());
+
 
         //check if APMC data is present and if the seed matches what we expect
         if (apmcData.state == APMCData.State.VALID && !worldData.getSeedName().equals(apmcData.seed_name)) {
@@ -217,24 +337,30 @@ public class APRandomizer {
         }
 
         if (jailPlayers) {
-            if(!server.getScoreboard().hasObjective("deaths")) {
-                Objective deaths = server.getScoreboard().addObjective("deaths", ObjectiveCriteria.DEATH_COUNT, Component.literal("deaths"), ObjectiveCriteria.RenderType.INTEGER);
-                server.getScoreboard().setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, deaths);
+            if(!server.getScoreboard().hasObjective("blocks_broken")) {
+                Objective blocksBroken = server.getScoreboard().addObjective("blocks_broken", ObjectiveCriteria.DUMMY, Component.literal("Blocks Broken"), ObjectiveCriteria.RenderType.INTEGER);
+                server.getScoreboard().setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, blocksBroken);
             }
 
-            for (int x = -5; x <= -1; x++) {
-                for (int z = -5; z <= -1; z++) {
-                    overworld.setBlock(new BlockPos(x, 128, z), Blocks.BEDROCK.defaultBlockState(), 2);
+            int chunkCount = getMaxChunks();
+            int side = getChunkSide();
+
+            // Create bedrock ring around the entire chunk area (2 blocks wide)
+            int gridSize = side * 16;
+            int ringWidth = 2;
+            for (int x = -ringWidth; x < gridSize + ringWidth; x++) {
+                for (int z = -ringWidth; z < gridSize + ringWidth; z++) {
+                    // Only place bedrock outside the chunk area (creating a border ring)
+                    if (x < 0 || x >= gridSize || z < 0 || z >= gridSize) {
+                        overworld.setBlock(new BlockPos(x, 128, z), Blocks.BEDROCK.defaultBlockState(), 2);
+                    }
                 }
             }
 
-            int side = getChunkSide();
-            int maxBlock = side * 16;
-
-            // Place bedrock floor for all chunks
-            for (int x = 0; x < maxBlock; x++) {
-                for (int z = 0; z < maxBlock; z++) {
-                    overworld.setBlock(new BlockPos(x, -64, z), Blocks.BEDROCK.defaultBlockState(), 2);
+            // Create spawn platform (5x5) in the corner
+            for (int x = -5; x <= -1; x++) {
+                for (int z = -5; z <= -1; z++) {
+                    overworld.setBlock(new BlockPos(x, 128, z), Blocks.BEDROCK.defaultBlockState(), 2);
                 }
             }
 
@@ -264,10 +390,21 @@ public class APRandomizer {
             // Use world seed for deterministic variant selection per chunk
             Random variantRng = new Random(apmcData.world_seed);
 
-            for (int cx = 0; cx < side; cx++) {
-                for (int cz = 0; cz < side; cz++) {
+            // Generate exactly chunk_count chunks, filling row by row
+            int chunksPlaced = 0;
+            for (int cz = 0; cz < side && chunksPlaced < chunkCount; cz++) {
+                for (int cx = 0; cx < side && chunksPlaced < chunkCount; cx++) {
                     int ox = cx * 16;
                     int oz = cz * 16;
+
+                    // Place bedrock floor for this chunk
+                    for (int x = ox; x < ox + 16; x++) {
+                        for (int z = oz; z < oz + 16; z++) {
+                            overworld.setBlock(new BlockPos(x, -64, z), Blocks.BEDROCK.defaultBlockState(), 2);
+                        }
+                    }
+
+                    // Place layer structures
                     for (int l = 0; l < layerYPositions.length; l++) {
                         List<StructureTemplate> variants = layerTemplates.get(l);
                         if (!variants.isEmpty()) {
@@ -277,10 +414,11 @@ public class APRandomizer {
                                 new StructurePlaceSettings(), RandomSource.create(), 2);
                         }
                     }
+                    chunksPlaced++;
                 }
             }
 
-            LOGGER.info("Dig mode: placed structures in {}x{} chunks (chunk_count={})", side, side, apmcData.chunk_count);
+            LOGGER.info("Dig mode: placed {} chunks in {}x{} grid", chunksPlaced, side, side);
 
             overworld.setDefaultSpawnPos(new BlockPos(-3, 129, -3), 0f);
             jailCenter = overworld.getSharedSpawnPos();
@@ -295,18 +433,15 @@ public class APRandomizer {
 
         }
 
-        if (apmcData.state == APMCData.State.VALID && apmcData.server != null) {
+        if (apmcData.state == APMCData.State.VALID) {
+            // Check for saved server address (from previous /connect) for auto-reconnect
+            String savedAddress = worldData.getServerAddress();
 
-            APClient apClient = APRandomizer.getAP();
-            apClient.setName(apmcData.player_name);
-            String address = apmcData.server.concat(":" + apmcData.port);
-
-            Utils.sendMessageToAll("Connecting to Archipelago server at " + address);
-
-            try {
-                apClient.connect(address);
-            } catch (URISyntaxException e) {
-                Utils.sendMessageToAll("unable to connect");
+            if (savedAddress != null && !savedAddress.isEmpty()) {
+                // Auto-reconnect using saved address with retry system
+                LOGGER.info("Found saved address, starting auto-reconnect: " + savedAddress);
+                resetReconnectAttempts();
+                attemptReconnect(savedAddress);
             }
         }
     }

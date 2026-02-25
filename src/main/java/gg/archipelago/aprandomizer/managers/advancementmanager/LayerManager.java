@@ -4,6 +4,7 @@ import gg.archipelago.aprandomizer.APRandomizer;
 import gg.archipelago.aprandomizer.common.Utils.Utils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.event.TickEvent;
@@ -24,20 +25,23 @@ public class LayerManager {
 
     @SubscribeEvent
     public static void onTick(TickEvent.ServerTickEvent event) {
+        int chunkCount = APRandomizer.getMaxChunks();
         int side = APRandomizer.getChunkSide();
 
         for (int y : checkLayers) {
             Level overWorld = APRandomizer.server.getLevel(Level.OVERWORLD);
             assert overWorld != null;
 
-            // Check each chunk separately
-            for (int cx = 0; cx < side; cx++) {
-                for (int cz = 0; cz < side; cz++) {
-                    int chunkIndex = cx * side + cz;
+            // Check only chunks that actually exist (matching generation order: outer cz, inner cx)
+            int chunkIndex = 0;
+            for (int cz = 0; cz < side && chunkIndex < chunkCount; cz++) {
+                for (int cx = 0; cx < side && chunkIndex < chunkCount; cx++) {
                     long key = (long) chunkIndex * 192 + (y + 63);
 
-                    if (clearedLayers.contains(key))
+                    if (clearedLayers.contains(key)) {
+                        chunkIndex++;
                         continue;
+                    }
 
                     boolean allAir = true;
                     int ox = cx * 16;
@@ -57,14 +61,17 @@ public class LayerManager {
 
                     if (allAir) {
                         clearedLayers.add(key);
-                        if (side == 1) {
+                        if (chunkCount == 1) {
                             Utils.sendTitleToAll(Component.literal("Layer " + y + " clear!"), Component.empty(), 0, 20, 0);
                         } else {
                             Utils.sendTitleToAll(Component.literal("Chunk " + chunkIndex + " Layer " + y + " clear!"), Component.empty(), 0, 20, 0);
                         }
+                        // Play level up sound when layer is cleared
+                        Utils.PlaySoundToAll(SoundEvents.PLAYER_LEVELUP);
                         APRandomizer.getGoalManager().updateGoal(true);
                         APRandomizer.getAP().checkLocation(START_INDEX + key);
                     }
+                    chunkIndex++;
                 }
             }
         }

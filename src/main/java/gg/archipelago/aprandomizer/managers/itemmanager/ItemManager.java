@@ -26,6 +26,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.ArrayList;
 
 @Mod.EventBusSubscriber
 public class ItemManager {
@@ -124,7 +125,7 @@ public class ItemManager {
         put(index++, trueGoldenPick);
 
         ItemStack DefensiveFish = new ItemStack(Items.SALMON);
-        DefensiveFish.enchant(Enchantments.KNOCKBACK, 5);
+        DefensiveFish.enchant(Enchantments.KNOCKBACK, 10);
         put(index++, DefensiveFish);
     }};
 
@@ -195,6 +196,11 @@ public class ItemManager {
     }
 
 
+    // Item IDs based on position in all_items array + 50000 offset
+    private static final long WORLD_BARRIER_EXPANSION_ID = 50024;
+    private static final long HASTE_BOOST_ID = 50025;
+    private static final long EXCAVATION_BOOST_ID = 50026;
+
     public boolean giveItemToAll(long itemID, long index) {
         receivedItems.add(itemID);
 
@@ -204,6 +210,21 @@ public class ItemManager {
 
         if (powers.containsKey(itemID)) {
             powers.get(itemID).grantPower();
+        }
+
+        // Handle World Barrier Expansion
+        if (itemID == WORLD_BARRIER_EXPANSION_ID) {
+            APRandomizer.expandWorldBarrier();
+        }
+
+        // Handle Haste Boost
+        if (itemID == HASTE_BOOST_ID) {
+            TemporaryBonusManager.grantBonusToAll(TemporaryBonusManager.BONUS_HASTE);
+        }
+
+        // Handle Excavation Boost
+        if (itemID == EXCAVATION_BOOST_ID) {
+            TemporaryBonusManager.grantBonusToAll(TemporaryBonusManager.BONUS_EXCAVATION);
         }
 
         if(APRandomizer.worldData.getIndex() <= index) {
@@ -232,53 +253,76 @@ public class ItemManager {
 
     @SubscribeEvent
     public static void onGameTick(TickEvent.ServerTickEvent event) {
+        // Only run on END phase to avoid double processing
+        if (event.phase != TickEvent.Phase.END) return;
+
         for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
-            Set<String> foundItems = new HashSet<>();
+            try {
+                Set<String> foundItems = new HashSet<>();
+                boolean needsBroadcast = false;
 
-            for (MobEffectInstance effect : permanentEffects.values()) {
-                if (player.hasEffect(effect.getEffect())) {
-                    if (player.getEffect(effect.getEffect()).getAmplifier() != effect.getAmplifier())
-                        player.forceAddEffect(effect, player);
-                }
-                else {
-                    player.forceAddEffect(effect, player);
-                }
-            }
-
-
-            //check all inventory slots.
-            for (Slot slot : player.containerMenu.slots) {
-                if (!slot.hasItem())
-                    continue;
-                String key = slot.getItem().getOrCreateTag().getString("key");
-                if (key.isBlank() || !permanentItems.containsKey(key))
-                    continue;
-
-                if (!ItemStack.isSameItemSameTags(slot.getItem(),permanentItems.get(key)) ||
-                        (ItemStack.isSameItemSameTags(slot.getItem(),permanentItems.get(key)) &&
-                                slot.getItem().getCount() != permanentItems.get(key).getCount())) {
-                    slot.set(permanentItems.get(key).copy());
-                }
-                foundItems.add(key);
-                player.containerMenu.broadcastFullState();
-            }
-
-            //check item on cursor.
-            ItemStack carriedItem = player.containerMenu.getCarried();
-            if (!carriedItem.isEmpty()) {
-                String ckey = carriedItem.getOrCreateTag().getString("key");
-                if (!ckey.isBlank()) {
-                    if (!carriedItem.sameItem(permanentItems.getOrDefault(ckey, ItemStack.EMPTY))) {
-                        player.containerMenu.setCarried(permanentItems.get(ckey).copy());
+                for (MobEffectInstance effect : permanentEffects.values()) {
+                    if (player.hasEffect(effect.getEffect())) {
+                        if (player.getEffect(effect.getEffect()).getAmplifier() != effect.getAmplifier())
+                            player.forceAddEffect(effect, player);
                     }
-                    foundItems.add(ckey);
+                    else {
+                        player.forceAddEffect(effect, player);
+                    }
                 }
-            }
 
-            for (String key : permanentItems.keySet()) {
-                if (!foundItems.contains(key)) {
-                    player.getInventory().add(permanentItems.get(key).copy());
+                // Check all inventory slots - use a copy of slot list to avoid concurrent modification
+                List<Slot> slots = new ArrayList<>(player.containerMenu.slots);
+                for (Slot slot : slots) {
+                    if (!slot.hasItem())
+                        continue;
+
+                    ItemStack slotItem = slot.getItem();
+                    if (slotItem.isEmpty()) continue;
+
+                    CompoundTag tag = slotItem.getTag();
+                    if (tag == null) continue;
+
+                    String key = tag.getString("key");
+                    if (key.isEmpty() || !permanentItems.containsKey(key))
+                        continue;
+
+                    ItemStack permanentItem = permanentItems.get(key);
+                    if (!ItemStack.isSameItemSameTags(slotItem, permanentItem) ||
+                            slotItem.getCount() != permanentItem.getCount()) {
+                        slot.set(permanentItem.copy());
+                        needsBroadcast = true;
+                    }
+                    foundItems.add(key);
                 }
+
+                // Check item on cursor - but don't modify if player is actively moving items
+                ItemStack carriedItem = player.containerMenu.getCarried();
+                if (!carriedItem.isEmpty()) {
+                    CompoundTag tag = carriedItem.getTag();
+                    if (tag != null) {
+                        String ckey = tag.getString("key");
+                        if (!ckey.isEmpty() && permanentItems.containsKey(ckey)) {
+                            // Don't replace carried item - just mark as found to avoid duplication
+                            foundItems.add(ckey);
+                        }
+                    }
+                }
+
+                // Give missing permanent items
+                for (String key : permanentItems.keySet()) {
+                    if (!foundItems.contains(key)) {
+                        player.getInventory().add(permanentItems.get(key).copy());
+                        needsBroadcast = true;
+                    }
+                }
+
+                // Broadcast inventory changes only once per tick if needed
+                if (needsBroadcast) {
+                    player.containerMenu.broadcastFullState();
+                }
+            } catch (Exception e) {
+                LOGGER.warn("Error in permanent item tick for player {}: {}", player.getName().getString(), e.getMessage());
             }
         }
     }

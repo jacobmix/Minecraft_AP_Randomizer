@@ -23,7 +23,7 @@ apply plugin: 'org.spongepowered.mixin'
 apply plugin: 'maven-publish'
 
 
-version = '0.0.3'
+version = '0.0.4' //idk why but 0.0.3 is not working for me :)
 group = 'gg.archipelago.aprandomizer' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = 'aprandomizer-MC1.19.4-hotfix'
 

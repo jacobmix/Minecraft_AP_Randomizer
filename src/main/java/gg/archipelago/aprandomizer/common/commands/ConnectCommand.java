@@ -66,6 +66,11 @@ public class ConnectCommand {
             apClient.setName(data.player_name);
             apClient.setPassword(password);
             String address = (port==-1) ? hostname : hostname.concat(":" + port);
+
+            // Save address for auto-reconnect on server restart
+            APRandomizer.worldData.setServerAddress(address);
+            LOGGER.info("Saved server address for auto-reconnect: " + address);
+
             Utils.sendMessageToAll("Connecting to Archipelago server at " + address);
             try {
                 apClient.connect(address);

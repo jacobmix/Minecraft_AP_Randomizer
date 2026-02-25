@@ -54,8 +54,15 @@ public class onJoin {
 
         APRandomizer.getGoalManager().updateInfoBar();
 
-        BlockPos jail = APRandomizer.getJailPosition();
-        player.teleportTo(jail.getX(),jail.getY(),jail.getZ());
+        if (APRandomizer.isJailPlayers()) {
+            // Game not started yet - teleport to jail
+            BlockPos jail = APRandomizer.getJailPosition();
+            player.teleportTo(jail.getX(), jail.getY(), jail.getZ());
+        } else {
+            // Game already started - teleport to starting platform (world spawn)
+            BlockPos spawn = player.getLevel().getSharedSpawnPos();
+            player.teleportTo(spawn.getX(), spawn.getY() + 1, spawn.getZ());
+        }
         player.setGameMode(GameType.SURVIVAL);
     }
 }

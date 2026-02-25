@@ -56,7 +56,17 @@ public class StartCommand {
 
         APRandomizer.setJailPlayers(false);
 
-        int side = APRandomizer.getChunkSide();
+        // Determine border size based on progressive chunks mode
+        int numChunks;
+        if (APRandomizer.isProgressiveChunks()) {
+            // Start with 1 chunk in progressive mode
+            numChunks = APRandomizer.getUnlockedChunks();
+        } else {
+            // Full size in normal mode
+            numChunks = APRandomizer.getMaxChunks();
+        }
+
+        int side = (int) Math.ceil(Math.sqrt(numChunks));
         double centerCoord = side * 8.0 - 1.0;
         double borderSize = side * 16.0 + 8.0;
 

@@ -26,6 +26,9 @@ public class APMCData {
     @SerializedName("chunk_count")
     public int chunk_count = 1;
 
+    @SerializedName("progressive_chunks")
+    public boolean progressive_chunks = false;
+
     public State state = State.VALID;
 
     public enum State {

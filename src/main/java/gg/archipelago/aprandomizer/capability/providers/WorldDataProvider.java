@@ -4,6 +4,7 @@ import gg.archipelago.aprandomizer.capability.APCapabilities;
 import gg.archipelago.aprandomizer.capability.data.WorldData;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ICapabilitySerializable;
@@ -11,6 +12,10 @@ import net.minecraftforge.common.util.LazyOptional;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 public class WorldDataProvider implements ICapabilitySerializable<Tag> {
 
@@ -53,6 +58,33 @@ public class WorldDataProvider implements ICapabilitySerializable<Tag> {
         nbt.putString("seedName", worldData.getSeedName());
         nbt.putBoolean("jailPlayers", worldData.getJailPlayers());
         nbt.putLong("index", worldData.getIndex());
+        nbt.putString("serverAddress", worldData.getServerAddress());
+        nbt.putInt("unlockedChunkLevel", worldData.getUnlockedChunkLevel());
+
+        // Serialize known players
+        ListTag knownPlayersList = new ListTag();
+        for (UUID uuid : worldData.getKnownPlayers()) {
+            CompoundTag playerTag = new CompoundTag();
+            playerTag.putUUID("uuid", uuid);
+            knownPlayersList.add(playerTag);
+        }
+        nbt.put("knownPlayers", knownPlayersList);
+
+        // Serialize pending bonuses
+        ListTag pendingBonusesList = new ListTag();
+        for (var entry : worldData.getAllPendingBonuses().entrySet()) {
+            CompoundTag playerBonusTag = new CompoundTag();
+            playerBonusTag.putUUID("uuid", entry.getKey());
+
+            CompoundTag bonusesTag = new CompoundTag();
+            for (var bonusEntry : entry.getValue().entrySet()) {
+                bonusesTag.putInt(bonusEntry.getKey(), bonusEntry.getValue());
+            }
+            playerBonusTag.put("bonuses", bonusesTag);
+            pendingBonusesList.add(playerBonusTag);
+        }
+        nbt.put("pendingBonuses", pendingBonusesList);
+
         return nbt;
     }
 
@@ -64,6 +96,38 @@ public class WorldDataProvider implements ICapabilitySerializable<Tag> {
             worldData.setDragonState(read.getInt("dragonState"));
             worldData.setJailPlayers(read.getBoolean("jailPlayers"));
             worldData.setIndex(read.getLong("index"));
+            worldData.setServerAddress(read.getString("serverAddress"));
+            // Default to 1 if not present (for backwards compatibility)
+            worldData.setUnlockedChunkLevel(read.contains("unlockedChunkLevel") ? read.getInt("unlockedChunkLevel") : 1);
+
+            // Deserialize known players
+            if (read.contains("knownPlayers")) {
+                Set<UUID> knownPlayers = new HashSet<>();
+                ListTag knownPlayersList = read.getList("knownPlayers", Tag.TAG_COMPOUND);
+                for (int i = 0; i < knownPlayersList.size(); i++) {
+                    CompoundTag playerTag = knownPlayersList.getCompound(i);
+                    knownPlayers.add(playerTag.getUUID("uuid"));
+                }
+                worldData.setKnownPlayers(knownPlayers);
+            }
+
+            // Deserialize pending bonuses
+            if (read.contains("pendingBonuses")) {
+                HashMap<UUID, HashMap<String, Integer>> pendingBonuses = new HashMap<>();
+                ListTag pendingBonusesList = read.getList("pendingBonuses", Tag.TAG_COMPOUND);
+                for (int i = 0; i < pendingBonusesList.size(); i++) {
+                    CompoundTag playerBonusTag = pendingBonusesList.getCompound(i);
+                    UUID uuid = playerBonusTag.getUUID("uuid");
+
+                    HashMap<String, Integer> bonuses = new HashMap<>();
+                    CompoundTag bonusesTag = playerBonusTag.getCompound("bonuses");
+                    for (String key : bonusesTag.getAllKeys()) {
+                        bonuses.put(key, bonusesTag.getInt(key));
+                    }
+                    pendingBonuses.put(uuid, bonuses);
+                }
+                worldData.setAllPendingBonuses(pendingBonuses);
+            }
         }
     }
 }

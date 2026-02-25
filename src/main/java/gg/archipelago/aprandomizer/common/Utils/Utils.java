@@ -51,7 +51,14 @@ public class Utils {
     public static void sendMessageToAll(Component message) {
         //tell the server to send the message in a thread safe way.
         server.execute(() -> server.getPlayerList().broadcastSystemMessage(message, false));
+    }
 
+    public static void sendMessageToPlayer(ServerPlayer player, String message) {
+        sendMessageToPlayer(player, Component.literal(message));
+    }
+
+    public static void sendMessageToPlayer(ServerPlayer player, Component message) {
+        server.execute(() -> player.sendSystemMessage(message));
     }
 
     public static void sendFancyMessageToAll(APPrint apPrint) {

@@ -1,6 +1,7 @@
 package gg.archipelago.aprandomizer.common.events;
 
 import gg.archipelago.aprandomizer.APRandomizer;
+import gg.archipelago.aprandomizer.managers.BlocksBrokenManager;
 import gg.archipelago.aprandomizer.managers.advancementmanager.CustomAdvancementHandler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -39,6 +40,9 @@ public class onBlockBreak {
         }
 
         if(event.getPlayer().getMainHandItem().getOrCreateTag().getBoolean("truepick")) {
+            // Disable block counting for True Golden Pick
+            BlocksBrokenManager.setCountingEnabled(false);
+
             int layer = event.getPos().getY();
             // Clear only the chunk the player is standing in
             int cx = (int) Math.floor(event.getPos().getX() / 16.0);
@@ -53,7 +57,11 @@ public class onBlockBreak {
             event.getPlayer().getInventory().removeItem(event.getPlayer().getMainHandItem());
             CustomAdvancementHandler.grantAdvancement((ServerPlayer)event.getPlayer(),new ResourceLocation(APRandomizer.MODID,"archipelago/use_true_pick"));
             APRandomizer.getLayerManager().addLayerCheck(layer);
+
+            // Re-enable block counting
+            BlocksBrokenManager.setCountingEnabled(true);
         }
+        // Note: Block counting is handled in onBlockProgress for shared mining system
     }
 
     @SubscribeEvent

@@ -28,7 +28,8 @@ public class onPlayerInteract {
 
         int side = APRandomizer.getChunkSide();
         LevelChunk chunk = event.getLevel().getChunkAt(event.getPos());
-        if(chunk.getPos().x < 0 || chunk.getPos().x >= side || chunk.getPos().z < 0 || chunk.getPos().z >= side)
+        // Only block interactions outside the positive chunk area (allow spawn platform in negative coords)
+        if(chunk.getPos().x >= side || chunk.getPos().z >= side)
             event.setCanceled(true);
 
     }
@@ -37,7 +38,8 @@ public class onPlayerInteract {
         int side = APRandomizer.getChunkSide();
         int cx = (int) Math.floor(event.getPos().getX() / 16.0);
         int cz = (int) Math.floor(event.getPos().getZ() / 16.0);
-        if(cx < 0 || cx >= side || cz < 0 || cz >= side)
+        // Only block breaking outside the positive chunk area (allow spawn platform in negative coords)
+        if(cx >= side || cz >= side)
             event.setCanceled(true);
     }
 
@@ -46,7 +48,8 @@ public class onPlayerInteract {
         int side = APRandomizer.getChunkSide();
         int cx = (int) Math.floor(event.getPos().getX() / 16.0);
         int cz = (int) Math.floor(event.getPos().getZ() / 16.0);
-        if(cx < 0 || cx >= side || cz < 0 || cz >= side)
+        // Only block placing outside the positive chunk area (allow spawn platform in negative coords)
+        if(cx >= side || cz >= side)
             event.setCanceled(true);
     }
 
