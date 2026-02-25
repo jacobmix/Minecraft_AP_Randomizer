@@ -16,7 +16,7 @@ class ProgressiveChunks(Toggle):
     World Barrier Expansion items will be added to the pool to unlock additional chunks.
     Requires Chunk Count > 1 to have any effect."""
     display_name = "Progressive Chunks"
-    default = 0
+    default = 1
 
 
 # Trap weight options - set to 0 to disable a trap
