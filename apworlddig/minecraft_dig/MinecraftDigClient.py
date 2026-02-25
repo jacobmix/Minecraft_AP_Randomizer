@@ -34,6 +34,10 @@ atexit.register(input, "Press enter to exit.")
 # 1 or more digits followed by m or g, then optional b
 max_heap_re = re.compile(r"^\d+[mMgG][bB]?$")
 
+DEFAULT_DIG_JAVA_VERSION = "17"
+DEFAULT_DIG_FORGE_URL = "https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.4-45.3.15/forge-1.19.4-45.3.15-installer.jar"
+DEFAULT_DIG_MOD_URL = "https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/download/dig-v0.0.5-hotfix/aprandomizer-MC1.19.4-hotfix-0.0.5.jar"
+
 
 def try_auto_launch_minecraft():
     """

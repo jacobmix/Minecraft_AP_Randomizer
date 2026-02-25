@@ -23,18 +23,24 @@
 		"Wingardium Leviosa",
 		"About Face",
 		"Acme Delivery",
-		"Progressive Excavation"
+		"Progressive Excavation",
+		"World Barrier Expansion",
+		"Haste Boost",
+		"Excavation Boost"
 	],
 	"progression_items": [
 		"Progressive Pickaxe",
 		"Progressive Shovel",
 		"Progressive Axe",
-		"Progressive Haste"
+		"Progressive Haste",
+		"World Barrier Expansion"
 	],
 	"useful_items": [
 		"TNT",
 		"Golden Pick",
-		"Progressive Excavation"
+		"Progressive Excavation",
+		"Haste Boost",
+		"Excavation Boost"
 	],
 	"trap_items": [
 		"Bee Trap",
@@ -53,8 +59,8 @@
 		"Acme Delivery"
 	],
 	"required_pool": {
-	    "Progressive Pickaxe": 6,
-	    "Progressive Shovel": 4,
+	    "Progressive Pickaxe": 7,
+	    "Progressive Shovel": 6,
 	    "Progressive Axe": 4,
 	    "Progressive Haste": 3,
 	    "True Golden Pick": 8,
@@ -77,6 +83,8 @@
 		"About Face": 3,
 		"Acme Delivery": 3,
 		"Golden Pick": 5,
-		"True Golden Pick": 2
+		"True Golden Pick": 2,
+		"Haste Boost": 3,
+		"Excavation Boost": 3
 	}
 }

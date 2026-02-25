@@ -2,7 +2,6 @@ import os
 import json
 import settings
 import typing
-import hashlib
 from base64 import b64encode, b64decode
 from typing import Dict, Any
 
@@ -17,7 +16,7 @@ from .MinecraftDigPatch import MinecraftDigProcedurePatch
 from .MinecraftDigClient import add_to_launcher_components
 
 add_to_launcher_components()
-client_version = 10
+client_version = 11
 GAME_NAME = "Minecraft Dig"
 
 class MinecraftDigSettings(settings.Group):
@@ -39,6 +38,25 @@ class MinecraftDigSettings(settings.Group):
         Example: '"C:/Users/<USER>/AppData/Local/Programs/MultiMC/MultiMC.exe" -d "C:/Users/<USER/AppData/Local/Programs/MultiMC" -l "1.19.4" -s "localhost" -a "<USER>"'
         """
         pass
+    class ForgeURL(str):
+        """
+        Forge server installer .jar URL.
+        From: https://mrnavastar.github.io/ForgeVersionAPI/forge-versions.json
+        Default: "https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.4-45.3.15/forge-1.19.4-45.3.15-installer.jar"
+        """
+        pass
+    class DigModURL(str):
+        """
+        Dig .jar mod URL.
+        Default: "https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/download/dig-v0.0.2-hotfix/aprandomizer-MC1.19.4-hotfix-0.0.2.jar"
+        """
+        pass
+    class JavaVersion(str):
+        """
+        Java version.
+        Default: "17"
+        """
+        pass
     class JavaPath(str):
         """
         Java path.
@@ -51,6 +69,9 @@ class MinecraftDigSettings(settings.Group):
     max_heap_size: str = "2G"
     release_channel: ReleaseChannel = ReleaseChannel("release")
     mc_launch: MCLaunch = MCLaunch("")
+    forge_url: ForgeURL = ForgeURL ("")
+    dig_mod_url: DigModURL = DigModURL("")
+    java_version: JavaVersion = JavaVersion("")
     java: JavaPath = JavaPath("")
 
 class MinecraftDigWorld(World):
@@ -77,6 +98,7 @@ class MinecraftDigWorld(World):
             'client_version': client_version,
             'race': self.multiworld.is_race,
             'chunk_count': self.options.chunk_count.value,
+            'progressive_chunks': bool(self.options.progressive_chunks.value),
         }
 
     def create_item(self, name: str) -> Item:
@@ -143,12 +165,9 @@ class MinecraftDigWorld(World):
         )
 
         patch.data = self._get_mc_data()
-        patch.hash = hashlib.sha1(json.dumps(patch.data).encode("utf-8")).hexdigest()
 
-        patch.patch_name = f"AP_{self.multiworld.seed_name}_P{self.player}_{self.multiworld.get_player_name(self.player)}"
-        patch.patch_file_ending = ".apmcdig"
-
-        patch.write(os.path.join(output_directory, patch.patch_name + patch.patch_file_ending))
+        patch.write(os.path.join(output_directory,
+            f"AP_{self.multiworld.seed_name}_P{self.player}_{self.multiworld.get_player_name(self.player)}.apmcdig"))
 
     def fill_slot_data(self) -> dict:
         slot_data = self._get_mc_data()
