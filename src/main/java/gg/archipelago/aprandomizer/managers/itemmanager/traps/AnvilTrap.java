@@ -12,7 +12,7 @@ public class AnvilTrap implements Trap {
     @Override
     public void trigger(ServerPlayer player) {
         APRandomizer.getServer().execute(() -> {
-            ServerLevel world = (ServerLevel) player.level();
+            ServerLevel world = APRandomizer.getServer().overworld();
             Vec3 pos = player.position();
             BlockPos blockPos = new BlockPos(player.getBlockX(), (int)pos.y + 6, player.getBlockZ());
             if(world.isEmptyBlock(blockPos))

@@ -21,7 +21,7 @@ public class TitleQueue {
     @SubscribeEvent
     static public void ServerTick(TickEvent.ServerTickEvent tick) {
         if (tick.phase == TickEvent.Phase.END) {
-            if (titleQueue.size() > 0) {
+            if (!titleQueue.isEmpty()) {
                 if (titleTime <= 0) {
                     QueuedTitle title = titleQueue.get(0);
                     titleQueue.remove(0);
@@ -37,9 +37,5 @@ public class TitleQueue {
 
     public static void queueTitle(QueuedTitle queuedTitle) {
         titleQueue.add(queuedTitle);
-    }
-
-    public static void clearTitleQueue() {
-        titleQueue.clear();
     }
 }

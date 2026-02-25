@@ -1,107 +1,133 @@
 package gg.archipelago.aprandomizer.managers.itemmanager;
 
 import gg.archipelago.aprandomizer.APRandomizer;
-import gg.archipelago.aprandomizer.APStructures;
 import gg.archipelago.aprandomizer.common.Utils.Utils;
+import gg.archipelago.aprandomizer.managers.advancementmanager.CustomAdvancementHandler;
+import gg.archipelago.aprandomizer.managers.itemmanager.powers.ExcavationPower;
+import gg.archipelago.aprandomizer.managers.itemmanager.powers.Power;
 import gg.archipelago.aprandomizer.managers.itemmanager.traps.*;
-import net.minecraft.ChatFormatting;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.EnchantedBookItem;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.enchantment.EnchantmentInstance;
 import net.minecraft.world.item.enchantment.Enchantments;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.Callable;
 
+@Mod.EventBusSubscriber
 public class ItemManager {
     // Directly reference a log4j logger.
     private static final Logger LOGGER = LogManager.getLogger();
 
-    public static final long DRAGON_EGG_SHARD = 45043L;
+    private long index = 50000;
+
+    private final HashMap<Long, ProgressiveList<PermanentInterface>> progressiveItems = new HashMap<>() {{
+        put(index++, new ProgressiveList<>() {{ //progressive pick
+            add(new PermanentItem(new ItemStack(Items.WOODEN_PICKAXE), "pick"));
+            add(new PermanentItem(new ItemStack(Items.STONE_PICKAXE), "pick"));
+            add(new PermanentItem(new ItemStack(Items.IRON_PICKAXE), "pick"));
+            add(new PermanentItem(new ItemStack(Items.DIAMOND_PICKAXE), "pick"));
+
+            ItemStack eff3 = new ItemStack(Items.NETHERITE_PICKAXE);
+            eff3.enchant(Enchantments.BLOCK_EFFICIENCY, 3);
+            add(new PermanentItem(eff3, "pick"));
+
+            ItemStack eff5 = new ItemStack(Items.NETHERITE_PICKAXE);
+            eff5.enchant(Enchantments.BLOCK_EFFICIENCY, 5);
+            add(new PermanentItem(eff5, "pick"));
+
+            ItemStack eff7 = new ItemStack(Items.NETHERITE_PICKAXE);
+            eff7.enchant(Enchantments.BLOCK_EFFICIENCY, 7);
+            add(new PermanentItem(eff7, "pick"));
+
+            ItemStack eff9 = new ItemStack(Items.NETHERITE_PICKAXE);
+            eff9.enchant(Enchantments.BLOCK_EFFICIENCY, 9);
+            add(new PermanentItem(eff9, "pick"));
+        }});
+        put(index++, new ProgressiveList<>() {{ //progressive shovel
+            add(new PermanentItem(new ItemStack(Items.WOODEN_SHOVEL), "shovel"));
+            add(new PermanentItem(new ItemStack(Items.STONE_SHOVEL), "shovel"));
+            add(new PermanentItem(new ItemStack(Items.IRON_SHOVEL), "shovel"));
+            add(new PermanentItem(new ItemStack(Items.DIAMOND_SHOVEL), "shovel"));
+
+            ItemStack eff3 = new ItemStack(Items.NETHERITE_SHOVEL);
+            eff3.enchant(Enchantments.BLOCK_EFFICIENCY, 3);
+            add(new PermanentItem(eff3, "shovel"));
+
+            ItemStack eff5 = new ItemStack(Items.NETHERITE_SHOVEL);
+            eff5.enchant(Enchantments.BLOCK_EFFICIENCY, 5);
+            add(new PermanentItem(eff5, "shovel"));
+
+            ItemStack eff7 = new ItemStack(Items.NETHERITE_SHOVEL);
+            eff7.enchant(Enchantments.BLOCK_EFFICIENCY, 7);
+            add(new PermanentItem(eff7, "shovel"));
+        }});
+        put(index++, new ProgressiveList<>() {{ //progressive axe
+            add(new PermanentItem(new ItemStack(Items.WOODEN_AXE), "axe"));
+            add(new PermanentItem(new ItemStack(Items.STONE_AXE), "axe"));
+            add(new PermanentItem(new ItemStack(Items.IRON_AXE), "axe"));
+            add(new PermanentItem(new ItemStack(Items.DIAMOND_AXE), "axe"));
+            add(new PermanentItem(new ItemStack(Items.NETHERITE_AXE), "axe"));
+        }});
+        put(index++, new ProgressiveList<>() {{ //progressive hoe
+            add(new PermanentItem(new ItemStack(Items.WOODEN_HOE), "hoe"));
+            add(new PermanentItem(new ItemStack(Items.STONE_HOE), "hoe"));
+            add(new PermanentItem(new ItemStack(Items.IRON_HOE), "hoe"));
+            add(new PermanentItem(new ItemStack(Items.DIAMOND_HOE), "hoe"));
+            add(new PermanentItem(new ItemStack(Items.NETHERITE_HOE), "hoe"));
+        }});
+        put(index++, new ProgressiveList<>() {{ //progressive hoe
+            add(new PermanentEffect(new MobEffectInstance(MobEffects.DIG_SPEED, MobEffectInstance.INFINITE_DURATION, 0, true, false), "haste"));
+            add(new PermanentEffect(new MobEffectInstance(MobEffects.DIG_SPEED, MobEffectInstance.INFINITE_DURATION, 1, true, false), "haste"));
+            add(new PermanentEffect(new MobEffectInstance(MobEffects.DIG_SPEED, MobEffectInstance.INFINITE_DURATION, 2, true, false), "haste"));
+            add(new PermanentEffect(new MobEffectInstance(MobEffects.DIG_SPEED, MobEffectInstance.INFINITE_DURATION, 3, true, false), "haste"));
+            add(new PermanentEffect(new MobEffectInstance(MobEffects.DIG_SPEED, MobEffectInstance.INFINITE_DURATION, 4, true, false), "haste"));
+        }});
+
+    }};
 
     private final HashMap<Long, ItemStack> itemStacks = new HashMap<>() {{
-        put(45015L, new ItemStack(Items.NETHERITE_SCRAP, 8));
-        put(45016L, new ItemStack(Items.EMERALD, 8));
-        put(45017L, new ItemStack(Items.EMERALD, 4));
+        put(index++, new ItemStack(Items.TNT, 16));
 
-        put(45018L, EnchantedBookItem.createForEnchantment(new EnchantmentInstance(Enchantments.CHANNELING, 1)));
-        put(45019L, EnchantedBookItem.createForEnchantment(new EnchantmentInstance(Enchantments.SILK_TOUCH, 1)));
-        put(45020L, EnchantedBookItem.createForEnchantment(new EnchantmentInstance(Enchantments.SHARPNESS, 3)));
-        put(45021L, EnchantedBookItem.createForEnchantment(new EnchantmentInstance(Enchantments.PIERCING, 4)));
-        put(45022L, EnchantedBookItem.createForEnchantment(new EnchantmentInstance(Enchantments.MOB_LOOTING, 3)));
-        put(45023L, EnchantedBookItem.createForEnchantment(new EnchantmentInstance(Enchantments.INFINITY_ARROWS, 1)));
+        ItemStack goldenPick = new ItemStack(Items.GOLDEN_PICKAXE);
+        goldenPick.enchant(Enchantments.BLOCK_EFFICIENCY, 10);
+        goldenPick.enchant(Enchantments.UNBREAKING, 5);
+        put(index++, goldenPick);
 
+        ItemStack trueGoldenPick = new ItemStack(Items.GOLDEN_PICKAXE);
+        addLore(trueGoldenPick,"True Golden Pickaxe", new String[] {
+                "A golden pickaxe,",
+                "A tool of great power,",
+                "But also of great danger.",
+                "",
+                "It can mine the most precious ores,",
+                "But it can also destroy the most hardened structures.",
+                "",
+                "It is a tool to be used with caution,",
+                "For it can be a tool of both good and evil."});
+        trueGoldenPick.enchant(Enchantments.BLOCK_EFFICIENCY, 2);
+        trueGoldenPick.setDamageValue(trueGoldenPick.getMaxDamage() - 1);
+        trueGoldenPick.getOrCreateTag().putBoolean("truepick", true);
+        put(index++, trueGoldenPick);
 
-        put(45024L, new ItemStack(Items.DIAMOND_ORE, 4));
-        put(45025L, new ItemStack(Items.IRON_ORE, 16));
-        put(45029L, new ItemStack(Items.ENDER_PEARL, 3));
-        put(45004L, new ItemStack(Items.LAPIS_LAZULI, 4));
-        put(45030L, new ItemStack(Items.LAPIS_LAZULI, 4));
-        put(45031L, new ItemStack(Items.COOKED_PORKCHOP, 16));
-        put(45032L, new ItemStack(Items.GOLD_ORE, 8));
-        put(45033L, new ItemStack(Items.ROTTEN_FLESH, 8));
-        var arrow = new ItemStack(Items.ARROW, 1);
-        Utils.setItemName(arrow, "The Arrow");
-        put(45034L, arrow);
-        put(45035L, new ItemStack(Items.ARROW, 32));
-        put(45036L, new ItemStack(Items.SADDLE, 1));
-
-        ItemStack villageCompass = new ItemStack(Items.COMPASS, 1);
-        makeCompass(villageCompass, APStructures.VILLAGE_TAG);
-        put(45037L, villageCompass);
-
-        ItemStack outpostCompass = new ItemStack(Items.COMPASS, 1);
-        makeCompass(outpostCompass, APStructures.OUTPOST_TAG);
-        put(45038L, outpostCompass);
-
-        ItemStack fortressCompass = new ItemStack(Items.COMPASS, 1);
-        makeCompass(fortressCompass, APStructures.FORTRESS_TAG);
-        put(45039L, fortressCompass);
-
-        ItemStack bastionCompass = new ItemStack(Items.COMPASS, 1);
-        makeCompass(bastionCompass, APStructures.BASTION_REMNANT_TAG);
-        put(45040L,bastionCompass);
-
-        ItemStack endCityCompass = new ItemStack(Items.COMPASS, 1);
-        makeCompass(endCityCompass, APStructures.END_CITY_TAG);
-        put(45041L, endCityCompass);
-
-        put(45042L, new ItemStack(Items.SHULKER_BOX, 1));
+        ItemStack DefensiveFish = new ItemStack(Items.SALMON);
+        DefensiveFish.enchant(Enchantments.KNOCKBACK, 5);
+        put(index++, DefensiveFish);
     }};
 
-    private final HashMap<Long,TagKey<Structure>> compasses = new HashMap<>() {{
-        put(45037L, APStructures.VILLAGE_TAG);
-        put(45038L, APStructures.OUTPOST_TAG);
-        put(45039L, APStructures.FORTRESS_TAG);
-        put(45040L, APStructures.BASTION_REMNANT_TAG);
-        put(45041L, APStructures.END_CITY_TAG);
-
-    }};
-
-    private final HashMap<Long, Integer> xpData = new HashMap<>() {{
-        put(45026L, 500);
-        put(45027L, 100);
-        put(45028L, 50);
-    }};
-
-    long index = 45100L;
     private final HashMap<Long, Callable<Trap>> trapData = new HashMap<>() {{
         put(index++, BeeTrap::new);
         put(index++, CreeperTrap::new);
@@ -119,164 +145,141 @@ public class ItemManager {
         put(index++, AnvilTrap::new);
     }};
 
-    private ArrayList<Long> receivedItems = new ArrayList<>();
+    private final HashMap<Long, Power> powers = new HashMap<>() {{
+        put(index++, new ExcavationPower());
+    }};
 
-    private final ArrayList<TagKey<Structure>> receivedCompasses = new ArrayList<>();
+    private List<Long> receivedItems = new ArrayList<>();
 
-    private void makeCompass(ItemStack iStack, TagKey<Structure> structureTag) {
-        CompoundTag nbt = iStack.getOrCreateTag();
-        nbt.put("structure", StringTag.valueOf(structureTag.location().toString()));
+    private static final HashMap<String, ItemStack> permanentItems = new HashMap<>();
+    private static final HashMap<String, MobEffectInstance> permanentEffects = new HashMap<>();
 
-        BlockPos structureCords = new BlockPos(0,0,0);
-        Utils.addLodestoneTags(Utils.getStructureWorld(structureTag),structureCords, iStack.getOrCreateTag());
-        Utils.setItemName(iStack, "uninitialized structure compass");
-        Utils.setItemLore(iStack, new ArrayList<>(){{
-            add("oops, this compass is broken.");
-            add("right click with compass in hand to fix.");
-            add("hopefully it will point to the right place.");
-            add("no guarantees.");
-        }});
+    public ItemManager() {
+        permanentEffects.put("saturation", new MobEffectInstance(MobEffects.SATURATION, MobEffectInstance.INFINITE_DURATION, 0, true, false));
     }
 
-    public void setReceivedItems(ArrayList<Long> items) {
-        this.receivedItems = items;
-        for (var item : items) {
-            if(compasses.containsKey(item) && !receivedCompasses.contains(compasses.get(item))) {
-                receivedCompasses.add(compasses.get(item));
-            }
+    private void addLore(ItemStack iStack, String name, String[] Lore) {
+        iStack.setHoverName(Component.literal(name));
+        CompoundTag compoundNBT = iStack.getOrCreateTagElement("display");
+        ListTag itemLoreLines = new ListTag();
+        for (String s : Lore) {
+            StringTag itemLore = StringTag.valueOf(Component.Serializer.toJson(Component.literal(s)));
+            itemLoreLines.add(itemLore);
         }
+        compoundNBT.put("Lore", itemLoreLines);
+    }
+
+    public void setReceivedItems(List<Long> items) {
+        this.receivedItems = items;
         APRandomizer.getGoalManager().updateGoal(false);
     }
 
-        public void giveItem(Long itemID, ServerPlayer player, int itemIndex) {
+    public void giveItem(Long itemID, ServerPlayer player) {
         if (APRandomizer.isJailPlayers()) {
             //dont send items to players if game has not started.
             return;
         }
 
-        if (APRandomizer.getWorldData().getPlayerIndex(player.getStringUUID()) >= itemIndex) return;
-
-        //update the player's index of received items for syncing later.
-        APRandomizer.getWorldData().updatePlayerIndex(player.getStringUUID(),itemIndex);
-
         if (itemStacks.containsKey(itemID)) {
             ItemStack itemstack = itemStacks.get(itemID).copy();
-            if(compasses.containsKey(itemID)){
-
-                TagKey<Structure> tag = compasses.get(itemID);
-                updateCompassLocation(tag, player , itemstack);
-            }
             Utils.giveItemToPlayer(player, itemstack);
-        } else if (xpData.containsKey(itemID)) {
-            int xpValue = xpData.get(itemID);
-            player.giveExperiencePoints(xpValue);
         } else if (trapData.containsKey(itemID)) {
             try {
                 trapData.get(itemID).call().trigger(player);
+                for (ServerPlayer serverPlayer : APRandomizer.getServer().getPlayerList().getPlayers()) {
+                    CustomAdvancementHandler.grantAdvancement(serverPlayer,new ResourceLocation(APRandomizer.MODID,"archipelago/get_trap"));
+                }
             } catch (Exception ignored) {
             }
         }
     }
 
 
-    public void giveItemToAll(long itemID, int index) {
-
+    public boolean giveItemToAll(long itemID, long index) {
         receivedItems.add(itemID);
-        //check if this item is a structure compass, and we are not already tracking that one.
-        if(compasses.containsKey(itemID) && !receivedCompasses.contains(compasses.get(itemID))) {
-            receivedCompasses.add(compasses.get(itemID));
+
+        if (progressiveItems.containsKey(itemID)) {
+            progressiveItems.get(itemID).getNext().applyEffect();
         }
 
-        APRandomizer.getServer().execute(() -> {
-            for (ServerPlayer serverplayerentity : APRandomizer.getServer().getPlayerList().getPlayers()) {
-                giveItem(itemID, serverplayerentity, index);
-            }
-        });
-
-        APRandomizer.getGoalManager().updateGoal(true);
-    }
-
-    /***
-     fetches the index form the player's capability then makes sure they have all items after that index.
-     * @param player ServerPlayer to catch up
-     */
-    public void catchUpPlayer(ServerPlayer player) {
-        int playerIndex = APRandomizer.getWorldData().getPlayerIndex(player.getStringUUID());
-
-        for (int i = playerIndex; i < receivedItems.size(); i++) {
-            giveItem(receivedItems.get(i), player, i+1);
+        if (powers.containsKey(itemID)) {
+            powers.get(itemID).grantPower();
         }
 
+        if(APRandomizer.worldData.getIndex() <= index) {
+            APRandomizer.getServer().execute(() -> {
+                APRandomizer.worldData.setIndex(index);
+                for (ServerPlayer serverplayerentity : APRandomizer.getServer().getPlayerList().getPlayers()) {
+                    giveItem(itemID, serverplayerentity);
+                }
+            });
+            return true;
+        }
+        return false;
     }
 
-    public ArrayList<TagKey<Structure>> getCompasses() {
-        return receivedCompasses;
-    }
-
-    public ArrayList<Long> getAllItems() {
+    public List<Long> getAllItems() {
         return receivedItems;
     }
 
-    public static void updateCompassLocation(TagKey<Structure> structureTag, Player player, ItemStack compass) {
-
-        //get the actual structure data from forge, and make sure its changed to the AP one if needed.
-
-        //get our local custom structure if needed.
-        ResourceKey<Level> world = Utils.getStructureWorld(structureTag);
-
-        //only locate structure if the player is in the same world as the one for the compass
-        //otherwise just point it to 0,0 in said dimension.
-        BlockPos structurePos = new BlockPos(0,0,0);
-        ArrayList<String> lore = new ArrayList<>(){{
-            add("Right click with compass in hand to");
-            add("cycle though unlocked compasses.");
-        }};
-        var displayName = Component.literal(String.format("Structure Compass (%s)", Utils.getAPStructureName(structureTag)));
-        if(player.getCommandSenderWorld().dimension().equals(world)) {
-            try {
-                structurePos = APRandomizer.getServer().getLevel(world).findNearestMapStructure(structureTag, player.blockPosition(), 75, false);
-                lore.add(0,"Location X: " + structurePos.getX() + ", Z: " + structurePos.getZ());
-            } catch (NullPointerException exception) {
-                player.sendSystemMessage(Component.literal("Could not find a nearby " + Utils.getAPStructureName(structureTag)));
-                displayName = Component.literal(
-                        String.format("Structure Compass (%s) Not Found",
-                                Utils.getAPStructureName(structureTag))
-                ).withStyle(ChatFormatting.YELLOW);
-            }
-        }
-        else {
-            displayName = Component.literal(
-                    String.format("Structure Compass (%s) Wrong Dimension",
-                            Utils.getAPStructureName(structureTag))
-                    ).withStyle(ChatFormatting.DARK_RED);
-        }
-
-        if(structurePos == null)
-            structurePos = new BlockPos(0,0,0);
-        //update the nbt data with our new structure.
-
-        CompoundTag nbt = compass.getOrCreateTag();
-        //update the nbt data with our new structure.
-        nbt.put("structure", StringTag.valueOf(structureTag.location().toString()));
-        Utils.addLodestoneTags(world,structurePos,nbt);
-        Utils.setNameAndLore(compass, displayName, lore);
+    public static void updateEffect(MobEffectInstance effect, String key) {
+        permanentEffects.put(key, effect);
     }
 
-        // refresh all compasses in player inventory
-    public static void refreshCompasses(ServerPlayer player) {
-        player.getInventory().items.forEach( (item) -> {
-            if(item.getItem().equals(Items.COMPASS)) {
-                if(!item.hasTag())
-                    return;
-                CompoundTag nbt = item.getOrCreateTag();
-                if(nbt.get("structure") == null)
-                    return;
+    public static void updateItem(ItemStack item, String key) {
+        permanentItems.put(key, item);
+    }
 
-                try {
-                    TagKey<Structure> tagKey = TagKey.create(Registries.STRUCTURE, ResourceLocation.tryParse(nbt.getString("structure")));
-                    updateCompassLocation(tagKey, player, item);
-                } catch (Exception ignored) {}
+    @SubscribeEvent
+    public static void onGameTick(TickEvent.ServerTickEvent event) {
+        for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
+            Set<String> foundItems = new HashSet<>();
+
+            for (MobEffectInstance effect : permanentEffects.values()) {
+                if (player.hasEffect(effect.getEffect())) {
+                    if (player.getEffect(effect.getEffect()).getAmplifier() != effect.getAmplifier())
+                        player.forceAddEffect(effect, player);
+                }
+                else {
+                    player.forceAddEffect(effect, player);
+                }
             }
-        });
+
+
+            //check all inventory slots.
+            for (Slot slot : player.containerMenu.slots) {
+                if (!slot.hasItem())
+                    continue;
+                String key = slot.getItem().getOrCreateTag().getString("key");
+                if (key.isBlank() || !permanentItems.containsKey(key))
+                    continue;
+
+                if (!ItemStack.isSameItemSameTags(slot.getItem(),permanentItems.get(key)) ||
+                        (ItemStack.isSameItemSameTags(slot.getItem(),permanentItems.get(key)) &&
+                                slot.getItem().getCount() != permanentItems.get(key).getCount())) {
+                    slot.set(permanentItems.get(key).copy());
+                }
+                foundItems.add(key);
+                player.containerMenu.broadcastFullState();
+            }
+
+            //check item on cursor.
+            ItemStack carriedItem = player.containerMenu.getCarried();
+            if (!carriedItem.isEmpty()) {
+                String ckey = carriedItem.getOrCreateTag().getString("key");
+                if (!ckey.isBlank()) {
+                    if (!carriedItem.sameItem(permanentItems.getOrDefault(ckey, ItemStack.EMPTY))) {
+                        player.containerMenu.setCarried(permanentItems.get(ckey).copy());
+                    }
+                    foundItems.add(ckey);
+                }
+            }
+
+            for (String key : permanentItems.keySet()) {
+                if (!foundItems.contains(key)) {
+                    player.getInventory().add(permanentItems.get(key).copy());
+                }
+            }
+        }
     }
 }

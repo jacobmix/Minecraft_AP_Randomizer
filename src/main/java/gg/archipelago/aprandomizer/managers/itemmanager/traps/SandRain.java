@@ -11,7 +11,7 @@ public class SandRain implements Trap {
     @Override
     public void trigger(ServerPlayer player) {
         APRandomizer.getServer().execute(() -> {
-            ServerLevel world = (ServerLevel) player.level();
+            ServerLevel world = APRandomizer.getServer().overworld();
             Vec3 pos = player.position();
             int radius = 5;
             for (int x = (int)pos.x - radius; x <= (int)pos.x + radius; x++) {

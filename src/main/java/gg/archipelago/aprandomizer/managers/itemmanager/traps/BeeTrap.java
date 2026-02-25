@@ -23,7 +23,7 @@ public class BeeTrap implements Trap {
     @Override
     public void trigger(ServerPlayer player) {
         APRandomizer.getServer().execute(() -> {
-            ServerLevel world = (ServerLevel)player.level();
+            ServerLevel world = player.getLevel();
             Vec3 pos = player.position();
             for (int i = 0; i < numberOfBees; i++) {
                 Bee bee = EntityType.BEE.create(world);

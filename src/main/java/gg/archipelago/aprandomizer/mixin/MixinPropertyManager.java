@@ -1,7 +1,7 @@
 package gg.archipelago.aprandomizer.mixin;
 
 import gg.archipelago.aprandomizer.APRandomizer;
-import gg.archipelago.aprandomizer.ap.storage.APMCData;
+import gg.archipelago.aprandomizer.APStorage.APMCData;
 import net.minecraft.server.dedicated.Settings;
 import org.apache.logging.log4j.LogManager;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,17 +18,17 @@ import java.util.Properties;
 public abstract class MixinPropertyManager {
 
     @Inject(method = "loadFromFile(Ljava/nio/file/Path;)Ljava/util/Properties;", at = @At("RETURN"), locals = LocalCapture.CAPTURE_FAILSOFT)
-    private static void onLoadFromFile(Path pPath, CallbackInfoReturnable<Properties> cir) {
-        Properties properties = cir.getReturnValue();
+    private static void onLoadFromFile(Path p_218969_0_, CallbackInfoReturnable<Properties> cir, Properties properties) {
         APMCData data = APRandomizer.getApmcData();
         LogManager.getLogger().info("Injecting Archipelago Seed");
 
         properties.setProperty("level-seed", "" + data.world_seed);
         properties.setProperty("spawn-protection", "0");
         properties.setProperty("allow-flight", "true");
-        properties.setProperty("level-name","Archipelago-"+ data.seed_name+"-P"+ data.player_id);
-        properties.setProperty("level-type","default");
-        properties.setProperty("generator-settings","{}");
+        properties.setProperty("level-name", "Archipelago-" + data.seed_name + "-P" + data.player_id);
+
+        properties.setProperty("level-type", "flat");
+        properties.setProperty("generator-settings", "{\"layers\":[{\"block\":\"minecraft:air\",\"height\":319}],\"biome\":\"minecraft:the_void\"}");
 
         if(data.race) {
             LogManager.getLogger().info("Archipelago race flag found enforcing race settings.");

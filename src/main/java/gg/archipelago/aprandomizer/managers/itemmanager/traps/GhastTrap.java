@@ -15,7 +15,7 @@ public class GhastTrap implements Trap {
     @Override
     public void trigger(ServerPlayer player) {
         APRandomizer.getServer().execute(() -> {
-            ServerLevel world = (ServerLevel) player.level();
+            ServerLevel world = player.getLevel();
             Vec3 pos = player.position();
 
             Ghast ghast = EntityType.GHAST.create(world);

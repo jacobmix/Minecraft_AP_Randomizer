@@ -4,9 +4,9 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
-import gg.archipelago.aprandomizer.ap.APClient;
+import gg.archipelago.aprandomizer.APClient;
 import gg.archipelago.aprandomizer.APRandomizer;
-import gg.archipelago.aprandomizer.ap.storage.APMCData;
+import gg.archipelago.aprandomizer.APStorage.APMCData;
 import gg.archipelago.aprandomizer.common.Utils.Utils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -29,7 +29,6 @@ public class ConnectCommand {
 
         dispatcher.register(
                 Commands.literal("connect") //base slash command is "connect"
-                        .executes(context -> connectToAPServer(context, null, -2, null))
                         //take the first argument as a string and name it "Address"
                         .then(Commands.argument("Address", StringArgumentType.string())
                                 .executes(context -> connectToAPServer(
@@ -61,19 +60,15 @@ public class ConnectCommand {
 
     private static int connectToAPServer(CommandContext<CommandSourceStack> commandContext, String hostname, int port, String password) {
         APMCData data = APRandomizer.getApmcData();
-        if(hostname == null) {
-            hostname = data.server;
-            port = data.port;
-        }
         if (data.state == APMCData.State.VALID) {
 
-            APClient APClient = APRandomizer.getAP();
-            APClient.setName(data.player_name);
-            APClient.setPassword(password);
+            APClient apClient = APRandomizer.getAP();
+            apClient.setName(data.player_name);
+            apClient.setPassword(password);
             String address = (port==-1) ? hostname : hostname.concat(":" + port);
             Utils.sendMessageToAll("Connecting to Archipelago server at " + address);
             try {
-                APClient.connect(address);
+                apClient.connect(address);
             } catch (URISyntaxException e) {
                 Utils.sendMessageToAll("Malformed address " + address);
             }

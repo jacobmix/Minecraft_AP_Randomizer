@@ -1,25 +1,19 @@
 {
   "display": {
     "icon": {
-      "item": "minecraft:ender_pearl",
-      "count": 1
+      "item": "minecraft:stone_shovel"
     },
-    "title": "Archipelago",
-    "description": "Welcome to the AP Randomizer",
-    "background": "minecraft:textures/gui/advancements/backgrounds/end.png",
+    "title": "Minecraft Dig",
+    "description": "Congratulations, the game has started, now dig",
     "frame": "task",
-    "show_toast": false,
-    "announce_to_chat": false,
-    "hidden": false
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false,
+    "background": "minecraft:textures/block/bamboo_block.png"
   },
   "criteria": {
-    "auto": {
-      "trigger": "minecraft:tick"
+    "impossible": {
+      "trigger": "minecraft:impossible"
     }
-  },
-  "requirements": [
-    [
-      "auto"
-    ]
-  ]
+  }
 }

@@ -1,41 +1,48 @@
 package gg.archipelago.aprandomizer.common.Utils;
 
-import dev.koifysh.archipelago.Print.APPrint;
-import dev.koifysh.archipelago.Print.APPrintColor;
-import dev.koifysh.archipelago.Print.APPrintPart;
-import dev.koifysh.archipelago.Print.APPrintType;
-import static dev.koifysh.archipelago.flags.NetworkItem.ADVANCEMENT;
-import static dev.koifysh.archipelago.flags.NetworkItem.TRAP;
-import static dev.koifysh.archipelago.flags.NetworkItem.USEFUL;
-import static gg.archipelago.aprandomizer.APRandomizer.server;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import gg.archipelago.aprandomizer.APRandomizer;
-import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.*;
+import io.github.archipelagomw.Print.APPrint;
+import io.github.archipelagomw.Print.APPrintColor;
+import io.github.archipelagomw.Print.APPrintPart;
+import io.github.archipelagomw.Print.APPrintType;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.phys.Vec3;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.awt.*;
-import java.util.*;
-import java.util.List;
+import java.util.Collections;
 
 public class Utils {
     // Directly reference a log4j logger.
     private static final Logger LOGGER = LogManager.getLogger();
+    private static final MinecraftServer server = APRandomizer.getServer();
 
+    /**
+     * @param source command source to send the message.
+     * @param Message Message to send
+     * send a message to whoever ran the command.
+     */
+
+    public static void SendMessage(CommandSourceStack source, String Message) {
+        try {
+            ServerPlayer player = source.getPlayerOrException();
+            player.sendSystemMessage(Component.literal(Message));
+        } catch (CommandSyntaxException e) {
+            source.getServer().sendSystemMessage(Component.literal(Message));
+        }
+    }
 
     public static void sendMessageToAll(String message) {
         sendMessageToAll(Component.literal(message));
@@ -44,6 +51,7 @@ public class Utils {
     public static void sendMessageToAll(Component message) {
         //tell the server to send the message in a thread safe way.
         server.execute(() -> server.getPlayerList().broadcastSystemMessage(message, false));
+
     }
 
     public static void sendFancyMessageToAll(APPrint apPrint) {
@@ -55,53 +63,38 @@ public class Utils {
     }
 
     public static Component apPrintToTextComponent(APPrint apPrint) {
-        boolean isMe = apPrint.receiving == APRandomizer.getAP().getSlot();
-
         MutableComponent message = Component.literal("");
         for (int i = 0; apPrint.parts.length > i; ++i) {
             APPrintPart part = apPrint.parts[i];
-            LOGGER.trace("part[{}]: {}, {}, {}", i, part.text, part.color, part.type);
+            LOGGER.trace("part[" + i + "]: " + part.text + ", " + part.color + ", " + part.type);
+            Style style = Style.EMPTY;
             //no default color was sent so use our own coloring.
-            Color color = isMe ? Color.PINK : Color.WHITE;
+            Color color = Color.WHITE;
             boolean bold = false;
             boolean underline = false;
 
             if (part.color == APPrintColor.none) {
                 if (APRandomizer.getAP().getMyName().equals(part.text)) {
-                    color = Color.decode("#EE00EE");
-                    underline = true;
+                    color = APPrintColor.gold.color;
+                    bold = true;
                 } else if (part.type == APPrintType.playerID) {
-                    color = Color.decode("#FAFAD2");
+                    color = APPrintColor.yellow.color;
                 } else if (part.type == APPrintType.locationID) {
-                    color = Color.decode("#00FF7F");
+                    color = APPrintColor.green.color;
                 } else if (part.type == APPrintType.itemID) {
-                    if ((part.flags & ADVANCEMENT) == ADVANCEMENT) {
-                        color = Color.decode("#00EEEE"); // advancement
-                    }
-                    else if ((part.flags & USEFUL) == USEFUL) {
-                        color = Color.decode("#6D8BE8"); // useful
-                    }
-                    else if ((part.flags & TRAP) == TRAP) {
-                        color = Color.decode("#FA8072"); // trap
-                    } else {
-                        color = Color.gray;
-                    }
+                    color = APPrintColor.cyan.color;
                 }
 
-            }
+            } else if (part.color == APPrintColor.underline)
+                underline = true;
+            else if (part.color == APPrintColor.bold)
+                bold = true;
             else
                 color = part.color.color;
 
-            if (part.color == APPrintColor.underline)
-                underline = true;
-
-            if (part.color == APPrintColor.bold)
-                bold = true;
-
-
             //blank out the first two bits because minecraft doesn't deal with alpha values
             int iColor = color.getRGB() & ~(0xFF << 24);
-            Style style = Style.EMPTY.withColor(iColor).withBold(bold).withUnderlined(underline);
+            style = Style.EMPTY.withColor(iColor).withBold(bold).withUnderlined(underline);
 
             message.append(Component.literal(part.text).withStyle(style));
         }
@@ -116,16 +109,13 @@ public class Utils {
         server.execute(() -> TitleQueue.queueTitle(new QueuedTitle(server.getPlayerList().getPlayers(), fadeIn, stay, fadeOut, subTitle, title, chatMessage)));
     }
 
-    public static void sendActionBarToAll(String actionBarMessage, int fadeIn, int stay, int fadeOut) {
-        server.execute(() -> {
-            TitleUtils.setTimes(server.getPlayerList().getPlayers(), fadeIn, stay, fadeOut);
-            TitleUtils.showActionBar(server.getPlayerList().getPlayers(), Component.literal(actionBarMessage));
-        });
+    public static void sendActionBarToAll(String actionBarMessage) {
+        server.execute(() -> TitleUtils.showActionBar(server.getPlayerList().getPlayers(), Component.literal(actionBarMessage)));
     }
 
-    public static void sendActionBarToPlayer(ServerPlayer player, String actionBarMessage, int fadeIn, int stay, int fadeOut) {
+    public static void sendActionBarToPlayer(ServerPlayer player, String actionBarMessage) {
         server.execute(() -> {
-            TitleUtils.setTimes(Collections.singletonList(player), fadeIn, stay, fadeOut);
+            //TitleUtils.setTimes(Collections.singletonList(player), fadeIn, stay, fadeOut);
             TitleUtils.showActionBar(Collections.singletonList(player), Component.literal(actionBarMessage));
         });
     }
@@ -138,39 +128,6 @@ public class Utils {
         });
     }
 
-    public static ResourceKey<Level> getStructureWorld(TagKey<Structure> structureTag) {
-
-        String structureName = getAPStructureName(structureTag);
-        //fetch what structures are where from our APMC data.
-        HashMap<String, String> structures = APRandomizer.getApmcData().structures;
-        for (Map.Entry<String, String> entry : structures.entrySet()) {
-            if(entry.getValue().equals(structureName)) {
-                if (entry.getKey().contains("Overworld")) {
-                    return Level.OVERWORLD;
-                }
-                if(entry.getKey().contains("Nether")) {
-                    return Level.NETHER;
-                }
-                if(entry.getKey().contains("The End")) {
-                    return Level.END;
-                }
-            }
-        }
-
-        return Level.OVERWORLD;
-    }
-
-    public static String getAPStructureName(TagKey<Structure> structureTag) {
-        return switch (structureTag.location().toString()) {
-            case "aprandomizer:village" -> "Village";
-            case "aprandomizer:end_city" -> "End City";
-            case "aprandomizer:pillager_outpost" -> "Pillager Outpost";
-            case "aprandomizer:fortress" -> "Nether Fortress";
-            case "aprandomizer:bastion_remnant" -> "Bastion Remnant";
-            default -> structureTag.location().getPath().toLowerCase();
-        };
-    }
-
     public static Vec3 getRandomPosition(Vec3 pos, int radius) {
         double a = Math.random()*Math.PI*2;
         double b = Math.random()*Math.PI/2;
@@ -178,14 +135,6 @@ public class Utils {
         double z = radius * Math.sin(a) * Math.sin(b) + pos.z;
         double y = radius * Math.cos(b) + pos.y;
         return new Vec3(x,y,z);
-    }
-
-    public static void addLodestoneTags(ResourceKey<Level> worldRegistryKey, BlockPos blockPos, CompoundTag nbt) {
-        nbt.put("LodestonePos", NbtUtils.writeBlockPos(blockPos));
-        Level.RESOURCE_KEY_CODEC.encodeStart(NbtOps.INSTANCE, worldRegistryKey).resultOrPartial(LOGGER::error).ifPresent((p_234668_1_) -> {
-            nbt.put("LodestoneDimension", p_234668_1_);
-        });
-        nbt.putBoolean("LodestoneTracked", false);
     }
 
     public static void giveItemToPlayer(ServerPlayer player, ItemStack itemstack) {
@@ -196,7 +145,8 @@ public class Utils {
             if (itementity1 != null) {
                 itementity1.makeFakeItem();
             }
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.2F, ((player.getRandom().nextFloat() - player.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
+
+            player.level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.2F, ((player.getRandom().nextFloat() - player.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
             player.inventoryMenu.broadcastChanges();
         } else {
             ItemEntity itementity = player.drop(itemstack, false);
@@ -205,33 +155,5 @@ public class Utils {
                 itementity.setTarget(player.getUUID());
             }
         }
-    }
-
-    public static void setNameAndLore(ItemStack itemstack, String itemName, Collection<String> itemLore) {
-        setItemName(itemstack, itemName);
-        setItemLore(itemstack, itemLore);
-    }
-
-    public static void setNameAndLore(ItemStack itemstack, Component itemName, Collection<String> itemLore) {
-        setItemName(itemstack, itemName);
-        setItemLore(itemstack, itemLore);
-    }
-
-    public static void setItemName(ItemStack itemstack, String itemName) {
-        itemstack.setHoverName(Component.literal(itemName));
-    }
-
-    public static void setItemName(ItemStack itemstack, Component itemName) {
-        itemstack.setHoverName(itemName);
-    }
-
-    public static void setItemLore(ItemStack iStack, Collection<String> itemLore) {
-        CompoundTag compoundnbt = iStack.getOrCreateTagElement("display");
-        ListTag itemLoreLines = new ListTag();
-        for (String line : itemLore) {
-            StringTag lineTag = StringTag.valueOf(Component.Serializer.toJson(Component.literal(line)));
-            itemLoreLines.add(lineTag);
-        }
-        compoundnbt.put("Lore",itemLoreLines);
     }
 }

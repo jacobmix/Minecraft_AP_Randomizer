@@ -25,7 +25,7 @@ public class WaterTrap implements Trap {
 
     @Override
     public void trigger(ServerPlayer player) {
-        ServerLevel world = (ServerLevel) player.level();
+        ServerLevel world = APRandomizer.getServer().overworld();
         Vec3 pos = player.position();
         int radius = 2;
         for (int x = (int) pos.x - radius; x <= (int) pos.x + radius; x++) {
@@ -36,11 +36,11 @@ public class WaterTrap implements Trap {
 
         APRandomizer.getServer().execute(() -> {
             for (BlockPos waterBlock : waterBlocks) {
-                if (world.isEmptyBlock(waterBlock)) {
-                    world.setBlock(waterBlock, Blocks.WATER.defaultBlockState(), 3);
+                    if (world.isEmptyBlock(waterBlock)) {
+                        world.setBlock(waterBlock, Blocks.WATER.defaultBlockState(), 3);
+                    }
                 }
-            }
-        });
+            });
     }
 
     @SubscribeEvent
