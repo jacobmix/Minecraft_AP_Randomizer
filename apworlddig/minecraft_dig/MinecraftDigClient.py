@@ -36,7 +36,7 @@ max_heap_re = re.compile(r"^\d+[mMgG][bB]?$")
 
 DEFAULT_DIG_JAVA_VERSION = "17"
 DEFAULT_DIG_FORGE_URL = "https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.4-45.3.15/forge-1.19.4-45.3.15-installer.jar"
-DEFAULT_DIG_MOD_URL = "https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/download/dig-v0.0.5-hotfix/aprandomizer-MC1.19.4-hotfix-0.0.5.jar"
+DEFAULT_DIG_MOD_URL = "https://github.com/jacobmix/Minecraft_AP_Randomizer/releases/download/Jar_Dig_v0.1/aprandomizer-MC1.19.4-0.1.jar"
 
 
 def try_auto_launch_minecraft():
@@ -372,7 +372,7 @@ def run_forge_server(forge_dir: str, java_version: str, heap_arg: str, forge_ver
 
 
 def get_minecraft_versions(version, release_channel="release"):
-    version_file_endpoint = "https://raw.githubusercontent.com/AshIndigo/Minecraft_AP_Randomizer/refs/heads/dig-hotfix/versions/minecraft_dig_versions.json"
+    version_file_endpoint = "https://raw.githubusercontent.com/jacobmix/Minecraft_AP_Randomizer/refs/heads/jar_dig/versions/minecraft_dig_versions.json"
     resp = requests.get(version_file_endpoint)
     local = False
     if resp.status_code == 200:  # OK

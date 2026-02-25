@@ -48,7 +48,7 @@ class MinecraftDigSettings(settings.Group):
     class DigModURL(str):
         """
         Dig .jar mod URL.
-        Default: "https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/download/dig-v0.0.2-hotfix/aprandomizer-MC1.19.4-hotfix-0.0.2.jar"
+        Default: "https://github.com/jacobmix/Minecraft_AP_Randomizer/releases/download/Jar_Dig_v0.1/aprandomizer-MC1.19.4-0.1.jar"
         """
         pass
     class JavaVersion(str):
