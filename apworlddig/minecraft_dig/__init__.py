@@ -38,25 +38,6 @@ class MinecraftDigSettings(settings.Group):
         Example: '"C:/Users/<USER>/AppData/Local/Programs/MultiMC/MultiMC.exe" -d "C:/Users/<USER/AppData/Local/Programs/MultiMC" -l "1.19.4" -s "localhost" -a "<USER>"'
         """
         pass
-    class ForgeURL(str):
-        """
-        Forge server installer .jar URL.
-        From: https://mrnavastar.github.io/ForgeVersionAPI/forge-versions.json
-        Default: "https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.4-45.3.15/forge-1.19.4-45.3.15-installer.jar"
-        """
-        pass
-    class DigModURL(str):
-        """
-        Dig .jar mod URL.
-        Default: "https://github.com/jacobmix/Minecraft_AP_Randomizer/releases/download/Jar_Dig_v0.1/aprandomizer-MC1.19.4-0.1.jar"
-        """
-        pass
-    class JavaVersion(str):
-        """
-        Java version.
-        Default: "17"
-        """
-        pass
     class JavaPath(str):
         """
         Java path.
@@ -69,9 +50,6 @@ class MinecraftDigSettings(settings.Group):
     max_heap_size: str = "2G"
     release_channel: ReleaseChannel = ReleaseChannel("release")
     mc_launch: MCLaunch = MCLaunch("")
-    forge_url: ForgeURL = ForgeURL ("")
-    dig_mod_url: DigModURL = DigModURL("")
-    java_version: JavaVersion = JavaVersion("")
     java: JavaPath = JavaPath("")
 
 class MinecraftDigWorld(World):
@@ -190,5 +168,6 @@ def mc_update_output(raw_data, server, port):
     data['server'] = server
     data['port'] = port
     return b64encode(bytes(json.dumps(data), 'utf-8'))
+
 
 
