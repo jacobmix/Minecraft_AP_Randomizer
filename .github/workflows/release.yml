@@ -106,21 +106,37 @@ jobs:
       id: forge
       run: |
         FILE=versions/minecraft_versions.json
-
+    
+        # determine selector based on branch type
+        if [ "${{ github.event.inputs.branch_type }}" = "jar_dig" ]; then
+          SELECTOR='select(.url | test("dig"; "i"))'
+        else
+          SELECTOR='select(.url | test("dig"; "i") | not)'
+        fi
+    
+        # get matching entry once
+        MATCH=$(jq -r "
+          [.release[], .beta[], .old[]]
+          | map($SELECTOR)
+          | first
+        " $FILE)
+    
+        # forge override or from match
         if [ -n "${{ github.event.inputs.forge_override }}" ]; then
           FORGE="${{ github.event.inputs.forge_override }}"
         else
-          FORGE=$(jq -r '.release[0].forge' $FILE)
+          FORGE=$(echo "$MATCH" | jq -r '.forge')
         fi
-
+    
+        # java override or from match
         if [ -n "${{ github.event.inputs.java_override }}" ]; then
           JAVA="${{ github.event.inputs.java_override }}"
         else
-          JAVA=$(jq -r '.release[0].java' $FILE)
+          JAVA=$(echo "$MATCH" | jq -r '.java')
         fi
-
+    
         MC_VERSION=$(echo "$FORGE" | cut -d- -f1)
-
+    
         echo "FORGE=$FORGE" >> $GITHUB_OUTPUT
         echo "JAVA=$JAVA" >> $GITHUB_OUTPUT
         echo "MC_VERSION=$MC_VERSION" >> $GITHUB_OUTPUT
