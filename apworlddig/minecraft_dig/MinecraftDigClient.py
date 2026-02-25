@@ -34,10 +34,6 @@ atexit.register(input, "Press enter to exit.")
 # 1 or more digits followed by m or g, then optional b
 max_heap_re = re.compile(r"^\d+[mMgG][bB]?$")
 
-DEFAULT_DIG_JAVA_VERSION = "17"
-DEFAULT_DIG_FORGE_URL = "https://maven.minecraftforge.net/net/minecraftforge/forge/1.19.4-45.3.15/forge-1.19.4-45.3.15-installer.jar"
-DEFAULT_DIG_MOD_URL = "https://github.com/jacobmix/Minecraft_AP_Randomizer/releases/download/Jar_Dig_v0.1/aprandomizer-MC1.19.4-0.1.jar"
-
 
 def try_auto_launch_minecraft():
     """
@@ -372,7 +368,7 @@ def run_forge_server(forge_dir: str, java_version: str, heap_arg: str, forge_ver
 
 
 def get_minecraft_versions(version, release_channel="release"):
-    version_file_endpoint = "https://raw.githubusercontent.com/jacobmix/Minecraft_AP_Randomizer/refs/heads/jar_dig/versions/minecraft_dig_versions.json"
+    version_file_endpoint = "https://raw.githubusercontent.com/jacobmix/Minecraft_AP_Randomizer/refs/heads/master/versions/minecraft_versions.json"
     resp = requests.get(version_file_endpoint)
     local = False
     if resp.status_code == 200:  # OK
@@ -563,5 +559,6 @@ def run_client(*args):
 
     # Wait for server process to exit
     server_process.wait()
+
 
 
