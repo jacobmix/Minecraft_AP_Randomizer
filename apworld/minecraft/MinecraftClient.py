@@ -368,7 +368,7 @@ def run_forge_server(forge_dir: str, java_version: str, heap_arg: str, forge_ver
 
 
 def get_minecraft_versions(version, release_channel="release"):
-    version_file_endpoint = "https://raw.githubusercontent.com/cjmang/Minecraft_AP_Randomizer/refs/heads/master/versions/minecraft_versions.json"
+    version_file_endpoint = "https://raw.githubusercontent.com/jacobmix/Minecraft_AP_Randomizer/refs/heads/master/versions/minecraft_versions.json"
     resp = requests.get(version_file_endpoint)
     local = False
     if resp.status_code == 200:  # OK
@@ -557,3 +557,4 @@ def run_client(*args):
 
     # Wait for server process to exit
     server_process.wait()
+
