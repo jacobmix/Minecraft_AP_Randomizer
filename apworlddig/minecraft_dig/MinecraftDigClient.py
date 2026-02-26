@@ -29,8 +29,6 @@ from settings import get_settings
 from .ui_prompts import yes_no, info
 
 
-atexit.register(input, "Press enter to exit.")
-
 # 1 or more digits followed by m or g, then optional b
 max_heap_re = re.compile(r"^\d+[mMgG][bB]?$")
 
@@ -559,6 +557,7 @@ def run_client(*args):
 
     # Wait for server process to exit
     server_process.wait()
+
 
 
 
