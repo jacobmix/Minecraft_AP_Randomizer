@@ -5,7 +5,8 @@
   "refmap": "aprandomizer.refmap.json",
   "mixins": [
     "MixinPropertyManager",
-    "MixinRaid"
+    "MixinRaid",
+    "ServerPlayerGameModeAccessor"
   ],
   "minVersion": "0.8.2"
 }
