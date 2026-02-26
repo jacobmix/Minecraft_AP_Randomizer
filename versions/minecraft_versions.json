@@ -39,20 +39,8 @@
     {
       "version": -1,
       "java": "17",
-      "forge": "1.19.4-45.0.43",
-      "url": "https://github.com/KonoTyran/Minecraft_AP_Randomizer/releases/download/v0.0.-2/aprandomizer-MC1.19.4-0.0.-2.jar"
-    },
-    {
-      "version": -1,
-      "java": "17",
       "forge": "1.19.4-45.3.15",
       "url": "https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/download/dig-v0.0.2-hotfix/aprandomizer-MC1.19.4-hotfix-0.0.2.jar"
-    },
-    {
-      "version": 10,
-      "java": "17",
-      "forge": "1.19.4-45.3.15",
-      "url": "https://github.com/AshIndigo/Minecraft_AP_Randomizer/releases/download/dig-v0.0.3-hotfix/aprandomizer-MC1.19.4-hotfix-0.0.3.jar"
     }
   ],
   "beta": [
