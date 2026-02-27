@@ -79,6 +79,8 @@ Firewall/port:
 >   - ``Control Panel\All Control Panel Items\Windows Defender Firewall\Allowed apps``>``Change Settings (Admin)``>``Allow another app``>``Browse``>``Forge-x.jar`` >``Add``>``Allow apps``  
 > - PortForward [mod](<https://modrinth.com/mod/dedicatedmcupnp/version/uru0Bn9t>) + [Architectury API](<https://modrinth.com/mod/architectury-api/version/11.1.17+minecraftforge>) (or [e4mc](<https://modrinth.com/mod/e4mc/version/5.3.1-forge>)). Place in ``mods`` folder of Forge server. Or try [this](<https://gist.github.com/jacobmix/ed6a0dcf3188f4843e414099fdd63cc4>). 
 
+If Microsoft's Minecraft authentication servers are down you can set ``online-mode`` to ``false`` in ``server.properties``.
+
 ## Tips:  
 Show file extensions: <https://www.howtogeek.com/205086/beginner-how-to-make-windows-show-file-extensions/>  
 Bonus apworlds (require ap restart):  
