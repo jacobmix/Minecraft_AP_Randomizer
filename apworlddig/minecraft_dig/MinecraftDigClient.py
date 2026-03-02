@@ -163,17 +163,18 @@ def replace_apmcdig_files(forge_dir: str, zip_apmcdig_path: str) -> None:
     """
     Takes the AP-generated ZIP-style .apmcdig file and converts it into
     a Forge-compatible base64 .apmc file inside the server directory.
+    Also extracts archipelago.json for auto-connect functionality.
     """
 
     # Where Forge expects the final base64 file
     target_apdata = os.path.join(forge_dir, "APData")
     os.makedirs(target_apdata, exist_ok=True)
 
-    # Remove any existing .apmcdig files (keep folder clean)
+    # Remove any existing .apmc and archipelago.json files (keep folder clean)
     for entry in os.scandir(target_apdata):
-        if entry.name.endswith(".apmc"):
+        if entry.name.endswith(".apmc") or entry.name == "archipelago.json":
             os.remove(entry.path)
-            print(f"Removed old patch: {entry.name}")
+            print(f"Removed old file: {entry.name}")
 
     # Forge expects the same apmc but base64 contents
     base_name = os.path.splitext(os.path.basename(zip_apmcdig_path))[0] + ".apmc"
@@ -181,6 +182,16 @@ def replace_apmcdig_files(forge_dir: str, zip_apmcdig_path: str) -> None:
 
     # Convert ZIP → base64 JSON text
     convert_apmcdig_to_base64(zip_apmcdig_path, base64_apmcdig_path)
+
+    # Also extract archipelago.json for auto-connect (if present in ZIP)
+    if zipfile.is_zipfile(zip_apmcdig_path):
+        with zipfile.ZipFile(zip_apmcdig_path, 'r') as zf:
+            if "archipelago.json" in zf.namelist():
+                archipelago_data = zf.read("archipelago.json")
+                archipelago_path = os.path.join(target_apdata, "archipelago.json")
+                with open(archipelago_path, 'wb') as f:
+                    f.write(archipelago_data)
+                print(f"Extracted archipelago.json for auto-connect")
 
     print(f"Converted {zip_apmcdig_path} → Forge base64 {base64_apmcdig_path}")
 
