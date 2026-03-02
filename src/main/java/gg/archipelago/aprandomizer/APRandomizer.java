@@ -36,8 +36,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -71,6 +73,9 @@ public class APRandomizer {
     private static final int MAX_RECONNECT_ATTEMPTS = 5;
     private static String pendingReconnectAddress = null;
 
+    // Server address from archipelago.json (for auto-connect on first boot)
+    private static String initialServerAddress = null;
+
     public APRandomizer() {
         LOGGER.info("Minecraft Archipelago 1.19.4 version (-2) Randomizer initializing.");
 
@@ -87,18 +92,39 @@ public class APRandomizer {
                 LOGGER.info("APData folder missing, creating.");
             }
 
-            File[] files = new File(path.toUri()).listFiles((d, name) -> name.endsWith(".apmc"));
-            assert files != null;
-            Arrays.sort(files, Comparator.comparingLong(File::lastModified));
-            String b64 = Files.readAllLines(files[0].toPath()).get(0);
-            String json = new String(Base64.getDecoder().decode(b64));
-            apmcData = gson.fromJson(json, APMCData.class);
+            // Read archipelago.json for server address (extracted by Python client)
+            File archipelagoFile = new File(path.toFile(), "archipelago.json");
+            if (archipelagoFile.exists()) {
+                try (InputStreamReader reader = new InputStreamReader(
+                        new FileInputStream(archipelagoFile), StandardCharsets.UTF_8)) {
+                    Map<String, Object> archipelagoData = gson.fromJson(reader, Map.class);
+                    if (archipelagoData != null && archipelagoData.containsKey("server")) {
+                        initialServerAddress = (String) archipelagoData.get("server");
+                        LOGGER.info("Found server address in archipelago.json: {}", initialServerAddress);
+                    }
+                } catch (Exception e) {
+                    LOGGER.warn("Failed to read archipelago.json: {}", e.getMessage());
+                }
+            }
+
+            // Read .apmc files (base64 encoded JSON)
+            if (apmcData == null) {
+                File[] files = new File(path.toUri()).listFiles((d, name) -> name.endsWith(".apmc"));
+                assert files != null;
+                Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+                String b64 = Files.readAllLines(files[0].toPath()).get(0);
+                String json = new String(Base64.getDecoder().decode(b64));
+                apmcData = gson.fromJson(json, APMCData.class);
+            }
+
             if (!validVersions.contains(apmcData.client_version)) {
                 apmcData.state = APMCData.State.INVALID_VERSION;
+                LOGGER.error("Invalid client_version: {} (expected one of: {})", apmcData.client_version, validVersions);
+            } else {
+                LOGGER.info("Loaded APMC data with client_version: {}", apmcData.client_version);
             }
-            //LOGGER.info(apmcData.structures.toString());
         } catch (IOException | NullPointerException | ArrayIndexOutOfBoundsException | AssertionError e) {
-            LOGGER.error("no .apmc file found. please place .apmc file in './APData/' folder.");
+            LOGGER.error("no .apmc or .apmcdig file found. please place file in './APData/' folder.");
             if (apmcData == null) {
                 apmcData = new APMCData();
                 apmcData.state = APMCData.State.MISSING;
@@ -257,6 +283,7 @@ public class APRandomizer {
     /**
      * Update the world border to cover n chunks
      * Border grows to fit ceil(sqrt(n)) x ceil(sqrt(n)) area
+     * Includes margin for bedrock ring (2 blocks) + walking space (2 blocks)
      */
     public static void updateWorldBorderForChunks(int numChunks) {
         if (server == null) return;
@@ -264,9 +291,15 @@ public class APRandomizer {
         // Calculate the grid side needed to contain numChunks
         int side = (int) Math.ceil(Math.sqrt(numChunks));
 
-        // Calculate border size: center at middle of grid, size = grid width
-        double centerCoord = side * 8.0;
-        double borderSize = side * 16.0;
+        // Margin: 3 blocks gap + 2 blocks walking space (border inside bedrock ring)
+        int margin = 5;
+
+        // Grid goes from 0 to (side * 16), so center is at (side * 8)
+        double gridSize = side * 16.0;
+        double centerCoord = gridSize / 2.0;
+
+        // Border size = grid width + margin on both sides
+        double borderSize = gridSize + (margin * 2);
 
         WorldBorder border = server.overworld().getWorldBorder();
         border.setCenter(centerCoord, centerCoord);
@@ -345,13 +378,17 @@ public class APRandomizer {
             int chunkCount = getMaxChunks();
             int side = getChunkSide();
 
-            // Create bedrock ring around the entire chunk area (2 blocks wide)
+            // Create bedrock ring around the entire chunk area
+            // ringGap = distance between chunks and the bedrock ring
+            // ringWidth = thickness of the bedrock ring
             int gridSize = side * 16;
+            int ringGap = 3;
             int ringWidth = 2;
-            for (int x = -ringWidth; x < gridSize + ringWidth; x++) {
-                for (int z = -ringWidth; z < gridSize + ringWidth; z++) {
-                    // Only place bedrock outside the chunk area (creating a border ring)
-                    if (x < 0 || x >= gridSize || z < 0 || z >= gridSize) {
+            int outerBound = ringGap + ringWidth;
+            for (int x = -outerBound; x < gridSize + outerBound; x++) {
+                for (int z = -outerBound; z < gridSize + outerBound; z++) {
+                    // Only place bedrock outside the chunk area + gap (creating a ring with gap)
+                    if (x < -ringGap || x >= gridSize + ringGap || z < -ringGap || z >= gridSize + ringGap) {
                         overworld.setBlock(new BlockPos(x, 128, z), Blocks.BEDROCK.defaultBlockState(), 2);
                     }
                 }
@@ -434,14 +471,22 @@ public class APRandomizer {
         }
 
         if (apmcData.state == APMCData.State.VALID) {
-            // Check for saved server address (from previous /connect) for auto-reconnect
+            // Check for server address to auto-connect
+            // Priority: 1. Saved address (from previous /connect), 2. Initial address (from archipelago.json)
             String savedAddress = worldData.getServerAddress();
+            String connectAddress = null;
 
             if (savedAddress != null && !savedAddress.isEmpty()) {
-                // Auto-reconnect using saved address with retry system
-                LOGGER.info("Found saved address, starting auto-reconnect: " + savedAddress);
+                connectAddress = savedAddress;
+                LOGGER.info("Found saved address for auto-reconnect: {}", connectAddress);
+            } else if (initialServerAddress != null && !initialServerAddress.isEmpty()) {
+                connectAddress = initialServerAddress;
+                LOGGER.info("Found initial server address from archipelago.json: {}", connectAddress);
+            }
+
+            if (connectAddress != null) {
                 resetReconnectAttempts();
-                attemptReconnect(savedAddress);
+                attemptReconnect(connectAddress);
             }
         }
     }

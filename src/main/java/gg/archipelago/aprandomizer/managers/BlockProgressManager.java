@@ -118,6 +118,13 @@ public class BlockProgressManager {
     }
 
     /**
+     * Check if a block has any progress (was being mined through our system)
+     */
+    public static boolean hasProgress(BlockPos pos) {
+        return blockProgress.containsKey(pos) || activeMinerSpeeds.containsKey(pos);
+    }
+
+    /**
      * Clear progress for a block (called when block is broken)
      */
     public static void clearProgress(BlockPos pos) {

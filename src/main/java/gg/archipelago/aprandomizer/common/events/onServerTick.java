@@ -20,9 +20,9 @@ public class onServerTick {
         // Check for players at Y=-100 or below (every tick for responsiveness)
         for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
             if (player.getY() <= -100) {
-                // Teleport to spawn platform
-                BlockPos spawn = player.getLevel().getSharedSpawnPos();
-                player.teleportTo(spawn.getX() + 0.5, spawn.getY() + 1, spawn.getZ() + 0.5);
+                // Teleport to safe position above chunk 0 (always accessible)
+                // This prevents softlock when falling into unlocked chunk areas
+                player.teleportTo(8.0, 129.0, 8.0);
             }
         }
 
@@ -35,10 +35,10 @@ public class onServerTick {
             int chunkX = (int) Math.floor(player.getX() / 16.0);
             int chunkZ = (int) Math.floor(player.getZ() / 16.0);
 
-            // Calculate chunk index (same formula as LayerManager)
+            // Calculate chunk index (same formula as LayerManager: cz * side + cx)
             if (chunkX >= 0 && chunkX < side && chunkZ >= 0 && chunkZ < side) {
-                int chunkIndex = chunkX * side + chunkZ;
-                Utils.sendActionBarToPlayer(player, "Chunk: " + chunkIndex + "  |  Y level: " + y);
+                int chunkIndex = chunkZ * side + chunkX;
+                Utils.sendActionBarToPlayer(player, "Chunk " + chunkIndex + "  |  Y level: " + y);
             } else {
                 Utils.sendActionBarToPlayer(player, "Y level: " + y);
             }

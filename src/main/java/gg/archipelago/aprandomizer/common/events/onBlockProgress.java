@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -120,6 +121,12 @@ public class onBlockProgress {
                                     level.destroyBlock(excavatePos, true, serverPlayer);
                                     BlocksBrokenManager.addBlockBroken(serverPlayer);
                                     APRandomizer.getLayerManager().addLayerCheck(excavatePos.getY());
+
+                                    // Damage tool for excavation
+                                    ItemStack tool = serverPlayer.getMainHandItem();
+                                    if (tool.isDamageableItem()) {
+                                        tool.hurtAndBreak(1, serverPlayer, (p) -> p.broadcastBreakEvent(serverPlayer.getUsedItemHand()));
+                                    }
                                 }
                             }
                         }

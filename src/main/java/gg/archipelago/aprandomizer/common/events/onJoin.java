@@ -54,6 +54,9 @@ public class onJoin {
 
         APRandomizer.getGoalManager().updateInfoBar();
 
+        // Register player so they receive queued items when offline
+        APRandomizer.getItemManager().registerPlayer(player);
+
         if (APRandomizer.isJailPlayers()) {
             // Game not started yet - teleport to jail
             BlockPos jail = APRandomizer.getJailPosition();
@@ -62,6 +65,9 @@ public class onJoin {
             // Game already started - teleport to starting platform (world spawn)
             BlockPos spawn = player.getLevel().getSharedSpawnPos();
             player.teleportTo(spawn.getX(), spawn.getY() + 1, spawn.getZ());
+
+            // Give any pending items that were received while player was offline
+            APRandomizer.getItemManager().givePendingItems(player);
         }
         player.setGameMode(GameType.SURVIVAL);
     }

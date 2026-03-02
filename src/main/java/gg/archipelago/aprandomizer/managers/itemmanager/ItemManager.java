@@ -152,6 +152,12 @@ public class ItemManager {
 
     private List<Long> receivedItems = new ArrayList<>();
 
+    // Track players who have joined at least once (by UUID)
+    private static final Set<UUID> knownPlayers = new HashSet<>();
+
+    // Queue of items per player (UUID -> list of item IDs to give when they rejoin)
+    private static final HashMap<UUID, List<Long>> pendingItemsPerPlayer = new HashMap<>();
+
     private static final HashMap<String, ItemStack> permanentItems = new HashMap<>();
     private static final HashMap<String, MobEffectInstance> permanentEffects = new HashMap<>();
 
@@ -230,13 +236,59 @@ public class ItemManager {
         if(APRandomizer.worldData.getIndex() <= index) {
             APRandomizer.getServer().execute(() -> {
                 APRandomizer.worldData.setIndex(index);
-                for (ServerPlayer serverplayerentity : APRandomizer.getServer().getPlayerList().getPlayers()) {
-                    giveItem(itemID, serverplayerentity);
+
+                // Check if this is a physical item or trap that requires players to receive
+                boolean isPhysicalItem = itemStacks.containsKey(itemID) || trapData.containsKey(itemID);
+
+                // Get online player UUIDs
+                Set<UUID> onlinePlayerUUIDs = new HashSet<>();
+                for (ServerPlayer player : APRandomizer.getServer().getPlayerList().getPlayers()) {
+                    onlinePlayerUUIDs.add(player.getUUID());
+                    giveItem(itemID, player);
+                }
+
+                // Queue item for offline known players
+                if (isPhysicalItem) {
+                    synchronized (pendingItemsPerPlayer) {
+                        for (UUID knownUUID : knownPlayers) {
+                            if (!onlinePlayerUUIDs.contains(knownUUID)) {
+                                pendingItemsPerPlayer.computeIfAbsent(knownUUID, k -> new ArrayList<>()).add(itemID);
+                                LOGGER.info("Queued item {} for offline player {}", itemID, knownUUID);
+                            }
+                        }
+                    }
                 }
             });
             return true;
         }
         return false;
+    }
+
+    /**
+     * Register a player as known (called on first join)
+     */
+    public void registerPlayer(ServerPlayer player) {
+        UUID uuid = player.getUUID();
+        boolean isNew = knownPlayers.add(uuid);
+        if (isNew) {
+            LOGGER.info("Registered new player: {} ({})", player.getName().getString(), uuid);
+        }
+    }
+
+    /**
+     * Give all pending items to a player (called when they rejoin)
+     */
+    public void givePendingItems(ServerPlayer player) {
+        UUID uuid = player.getUUID();
+        synchronized (pendingItemsPerPlayer) {
+            List<Long> pending = pendingItemsPerPlayer.remove(uuid);
+            if (pending != null && !pending.isEmpty()) {
+                LOGGER.info("Giving {} pending items to {}", pending.size(), player.getName().getString());
+                for (Long itemID : pending) {
+                    giveItem(itemID, player);
+                }
+            }
+        }
     }
 
     public List<Long> getAllItems() {
