@@ -62,7 +62,7 @@ public class APRandomizer {
     static private GoalManager goalManager;
     static private APMCData apmcData;
     static private final Set<Integer> validVersions = new HashSet<>() {{
-        this.add(12);
+        this.add(13);
     }};
     static private boolean jailPlayers = true;
     static private BlockPos jailCenter = BlockPos.ZERO;
