@@ -30,8 +30,8 @@ body:
       label: Apworld type
       description: What apworld was used?
       options:
-        - Main
-        - Dig
+        - label: Main
+        - label: Dig
     validations:
       required: true
   - type: input
