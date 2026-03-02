@@ -25,22 +25,52 @@ body:
     validations:
       required: false
   - type: checkboxes
-    id: manuallaunch
+    id: apworldtype
     attributes:
-      label: Manual Minecraft Launch?
-      description: Check this box if you were **NOT** using the Archipelago Minecraft Client.
+      label: Apworld type
+      description: What apworld was used?
       options:
-        - label: Manual Launch
-          required: false
+        - Main
+        - Dig
+    validations:
+      required: true
+  - type: input
+    id: apworldversiongen
+    attributes:
+      label: Apworld generation version
+      description: What version was this generated happen on?
+    validations:
+      required: true
+  - type: input
+    id: apworldversion
+    attributes:
+      label: Apworld version
+      description: What version for the client did this happen on?
+    validations:
+      required: true
+  - type: input
+    id: archipelagoversion
+    attributes:
+      label: Archipelago version
+      description: What Archipelago Launcher version did this happen on?
+    validations:
+      required: true
+  - type: input
+    id: archipelagoversiongen
+    attributes:
+      label: Archipelago generation version
+      description: What Archipelago Launcher version did this get generated happen on?
+    validations:
+      required: true
   - type: dropdown
     id: version
     attributes:
       label: Version
       description: Where did this error take place?
       options:
-        - Minecraft Server (Default)
         - Archipelago Minecraft Client
-        - Minecraft Client
+        - Minecraft Server
+        - Minecraft
     validations:
       required: true
   - type: textarea
