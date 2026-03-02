@@ -245,11 +245,21 @@ public class APRandomizer {
     }
 
     /**
-     * Get the current number of unlocked chunks
+     * Get the current unlocked grid side (1 = 1x1, 2 = 2x2, etc.)
+     */
+    public static int getUnlockedGridSide() {
+        if (worldData == null) return 1;
+        return worldData.getUnlockedChunkLevel(); // This represents grid side, not chunk count
+    }
+
+    /**
+     * Get the number of accessible chunks based on current grid side
      */
     public static int getUnlockedChunks() {
-        if (worldData == null) return 1;
-        return worldData.getUnlockedChunkLevel(); // Reusing the field, now means chunk count
+        int side = getUnlockedGridSide();
+        int maxChunks = getMaxChunks();
+        // Accessible = side², but capped at actual chunk count
+        return Math.min(side * side, maxChunks);
     }
 
     /**
@@ -260,36 +270,41 @@ public class APRandomizer {
     }
 
     /**
-     * Expand the world barrier by one chunk (called when receiving World Barrier Expansion)
+     * Get the max grid side needed to fit all chunks
+     */
+    public static int getMaxGridSide() {
+        return (int) Math.ceil(Math.sqrt(getMaxChunks()));
+    }
+
+    /**
+     * Expand the world barrier by one grid level (1x1 → 2x2 → 3x3, etc.)
+     * Called when receiving World Barrier Expansion item
      */
     public static void expandWorldBarrier() {
         if (worldData == null || server == null) return;
 
-        int maxChunks = getMaxChunks();
-        int currentChunks = worldData.getUnlockedChunkLevel();
+        int maxSide = getMaxGridSide();
+        int currentSide = getUnlockedGridSide();
 
-        if (currentChunks < maxChunks) {
+        if (currentSide < maxSide) {
             worldData.incrementUnlockedChunkLevel();
-            int newChunks = worldData.getUnlockedChunkLevel();
+            int newSide = getUnlockedGridSide();
+            int accessibleChunks = Math.min(newSide * newSide, getMaxChunks());
 
             // Update the world border
-            updateWorldBorderForChunks(newChunks);
+            updateWorldBorderForGridSide(newSide);
 
-            Utils.sendMessageToAll("World Barrier Expanded! Now accessible: " + newChunks + "/" + maxChunks + " chunks");
-            LOGGER.info("World Barrier expanded to {} chunks", newChunks);
+            Utils.sendMessageToAll("World Barrier Expanded! Now " + newSide + "x" + newSide + " grid (" + accessibleChunks + "/" + getMaxChunks() + " chunks accessible)");
+            LOGGER.info("World Barrier expanded to {}x{} grid ({} chunks)", newSide, newSide, accessibleChunks);
         }
     }
 
     /**
-     * Update the world border to cover n chunks
-     * Border grows to fit ceil(sqrt(n)) x ceil(sqrt(n)) area
-     * Includes margin for bedrock ring (2 blocks) + walking space (2 blocks)
+     * Update the world border to cover a grid of side x side chunks
+     * Includes margin for bedrock ring (2 blocks) + walking space (3 blocks)
      */
-    public static void updateWorldBorderForChunks(int numChunks) {
+    public static void updateWorldBorderForGridSide(int side) {
         if (server == null) return;
-
-        // Calculate the grid side needed to contain numChunks
-        int side = (int) Math.ceil(Math.sqrt(numChunks));
 
         // Margin: 3 blocks gap + 2 blocks walking space (border inside bedrock ring)
         int margin = 5;
