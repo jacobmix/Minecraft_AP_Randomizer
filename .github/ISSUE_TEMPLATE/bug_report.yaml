@@ -42,6 +42,13 @@ body:
     validations:
       required: true
   - type: input
+    id: archipelagoversiongen
+    attributes:
+      label: Archipelago generation version
+      description: What Archipelago Launcher version did this get generated happen on?
+    validations:
+      required: true
+  - type: input
     id: apworldversion
     attributes:
       label: Apworld version
@@ -53,13 +60,6 @@ body:
     attributes:
       label: Archipelago version
       description: What Archipelago Launcher version did this happen on?
-    validations:
-      required: true
-  - type: input
-    id: archipelagoversiongen
-    attributes:
-      label: Archipelago generation version
-      description: What Archipelago Launcher version did this get generated happen on?
     validations:
       required: true
   - type: dropdown
