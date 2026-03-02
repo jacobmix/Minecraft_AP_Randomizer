@@ -15,9 +15,11 @@ on:
           - jar
           - jar_dig
 
-      apworld_version_override:
-        description: "Optional apworld version override (example: 0.1.5). If empty, auto-increments 0.0.x."
+      replace_existing:
+        description: "Replace latest version.json URL instead of creating new version"
         required: false
+        default: false
+        type: boolean
 
       category:
         description: "minecraft_versions.json category"
@@ -28,6 +30,10 @@ on:
           - release
           - beta
           - old
+
+      apworld_version_override:
+        description: "Optional apworld version override (example: 0.1.5). If empty, auto-increments 0.0.x."
+        required: false
 
       forge_override:
         description: "Optional forge override (example: 1.19.4-45.3.15)."
@@ -85,18 +91,25 @@ jobs:
     - name: Determine next jar version
       id: jarver
       run: |
-        VERSION=$(jq '[.release[], .beta[], .old[]] | max_by(.version).version + 1' versions/minecraft_versions.json)
-        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        if [ "${{ github.event.inputs.replace_existing }}" = "true" ]; then
+          # reuse latest version instead of incrementing
+          if [ "${{ github.event.inputs.branch_type }}" = "jar_dig" ]; then
+            SELECTOR='select(.url | test("dig"; "i"))'
+          else
+            SELECTOR='select(.url | test("dig"; "i") | not)'
+          fi
 
-    - name: Check jar version uniqueness
-      run: |
-        VERSION=${{ steps.jarver.outputs.VERSION }}
-        EXISTS=$(jq "[.release[], .beta[], .old[]] | any(.version == $VERSION)" versions/minecraft_versions.json)
-
-        if [ "$EXISTS" = "true" ]; then
-          echo "Jar version already exists: $VERSION"
-          exit 1
+          VERSION=$(jq -r "
+            [.release[], .beta[], .old[]]
+            | map($SELECTOR)
+            | first
+            | .version
+          " versions/minecraft_versions.json)
+        else
+          VERSION=$(jq '[.release[], .beta[], .old[]] | max_by(.version).version + 1' versions/minecraft_versions.json)
         fi
+
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
     ############################################################
     # Determine forge + java
@@ -151,11 +164,13 @@ jobs:
         path: jar
 
     - name: Update APRandomizer.java version
+      if: github.event.inputs.replace_existing != 'true'
       run: |
         FILE=$(find jar -name APRandomizer.java)
         sed -i "s/this.add([0-9]\+)/this.add(${{ steps.jarver.outputs.VERSION }})/" "$FILE"
 
     - name: Commit jar branch
+      if: github.event.inputs.replace_existing != 'true'
       run: |
         cd jar
         git config user.name github-actions
@@ -178,7 +193,9 @@ jobs:
         FILE=$(find apworld -name archipelago.json)
         CURRENT=$(jq -r '.world_version' "$FILE")
 
-        if [ -n "${{ github.event.inputs.apworld_version_override }}" ]; then
+        if [ "${{ github.event.inputs.replace_existing }}" = "true" ]; then
+          NEW_VERSION="$CURRENT"
+        elif [ -n "${{ github.event.inputs.apworld_version_override }}" ]; then
           NEW_VERSION="${{ github.event.inputs.apworld_version_override }}"
         else
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
@@ -186,18 +203,22 @@ jobs:
           NEW_VERSION="$MAJOR.$MINOR.$PATCH"
         fi
 
-        jq ".world_version = \"$NEW_VERSION\"" "$FILE" > tmp.json
-        mv tmp.json "$FILE"
+        if [ "${{ github.event.inputs.replace_existing }}" != "true" ]; then
+          jq ".world_version = \"$NEW_VERSION\"" "$FILE" > tmp.json
+          mv tmp.json "$FILE"
+        fi
 
         echo "CURRENT_VERSION=$CURRENT" >> $GITHUB_OUTPUT
         echo "APWORLD_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
 
     - name: Update client_version in __init__.py
+      if: github.event.inputs.replace_existing != 'true'
       run: |
         FILE=$(find apworld -name "__init__.py")
         sed -i "s/client_version = [0-9]\+/client_version = ${{ steps.jarver.outputs.VERSION }}/" "$FILE"
 
     - name: Commit apworld branch
+      if: github.event.inputs.replace_existing != 'true'
       run: |
         cd apworld
         git config user.name github-actions
@@ -210,6 +231,7 @@ jobs:
     ############################################################
 
     - name: Check if tag already exists
+      if: github.event.inputs.replace_existing != 'true'
       run: |
         TAG="${{ steps.apworldver.outputs.APWORLD_VERSION }}${{ steps.vars.outputs.TAG_SUFFIX }}"
         if git rev-parse "$TAG" >/dev/null 2>&1; then
@@ -278,6 +300,7 @@ jobs:
     ############################################################
 
     - name: Create GitHub Release
+      if: github.event.inputs.replace_existing != 'true'
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.apworldver.outputs.APWORLD_VERSION }}${{ steps.vars.outputs.TAG_SUFFIX }}
@@ -294,6 +317,25 @@ jobs:
           release/${{ steps.artifacts.outputs.APWORLD }}
 
     ############################################################
+    # Replace existing release jar asset (replace mode)
+    ############################################################
+
+    - name: Replace existing release jar asset
+      if: github.event.inputs.replace_existing == 'true'
+      run: |
+        TAG="${{ steps.apworldver.outputs.APWORLD_VERSION }}${{ steps.vars.outputs.TAG_SUFFIX }}"
+        FILE="release/${{ steps.artifacts.outputs.JAR }}"
+
+        gh release delete-asset "$TAG" "${{ steps.artifacts.outputs.JAR }}" --yes || true
+
+        gh release upload "$TAG" "$FILE" --clobber
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        # gh release delete-asset "$TAG" "${{ steps.artifacts.outputs.APWORLD }}" --yes || true
+        # gh release upload "$TAG" "release/${{ steps.artifacts.outputs.APWORLD }}" --clobber
+
+    ############################################################
     # Update minecraft_versions.json
     ############################################################
 
@@ -301,11 +343,33 @@ jobs:
       run: |
         URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.apworldver.outputs.APWORLD_VERSION }}${{ steps.vars.outputs.TAG_SUFFIX }}/${{ steps.artifacts.outputs.JAR }}"
 
-        jq ".${{ github.event.inputs.category }} |= [{\"version\": ${{ steps.jarver.outputs.VERSION }}, \"java\": \"${{ steps.forge.outputs.JAVA }}\", \"forge\": \"${{ steps.forge.outputs.FORGE }}\", \"url\": \"$URL\"}] + ." versions/minecraft_versions.json > tmp.json
+        FILE=versions/minecraft_versions.json
 
-        mv tmp.json versions/minecraft_versions.json
+        if [ "${{ github.event.inputs.replace_existing }}" = "true" ]; then
+
+          if [ "${{ github.event.inputs.branch_type }}" = "jar_dig" ]; then
+            SELECTOR='test("dig"; "i")'
+          else
+            SELECTOR='test("dig"; "i") | not'
+          fi
+
+          jq "
+            (.release[], .beta[], .old[])
+            |= if (.url | $SELECTOR)
+               then .url = \"$URL\"
+               else .
+               end
+          " $FILE > tmp.json
+
+        else
+
+          jq ".${{ github.event.inputs.category }} |= [{\"version\": ${{ steps.jarver.outputs.VERSION }}, \"java\": \"${{ steps.forge.outputs.JAVA }}\", \"forge\": \"${{ steps.forge.outputs.FORGE }}\", \"url\": \"$URL\"}] + ." $FILE > tmp.json
+
+        fi
+
+        mv tmp.json $FILE
 
         git config user.name github-actions
         git config user.email github-actions@github.com
-        git commit -am "Update minecraft_versions.json for version ${{ steps.jarver.outputs.VERSION }}"
+        git commit -am "Update minecraft_versions.json"
         git push origin master
