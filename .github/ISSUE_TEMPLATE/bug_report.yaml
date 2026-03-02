@@ -38,21 +38,21 @@ body:
     id: apworldversiongen
     attributes:
       label: Apworld generation version
-      description: What version was this generated happen on?
+      description: What apworld version was this multiworld generated on?
     validations:
       required: true
   - type: input
     id: archipelagoversiongen
     attributes:
       label: Archipelago generation version
-      description: What Archipelago Launcher version did this get generated happen on?
+      description: What Archipelago Launcher version did this multiworld get generated happen on?
     validations:
       required: true
   - type: input
     id: apworldversion
     attributes:
       label: Apworld version
-      description: What version for the client did this happen on?
+      description: What apworld version for the client did this happen on?
     validations:
       required: true
   - type: input
@@ -63,9 +63,9 @@ body:
     validations:
       required: true
   - type: dropdown
-    id: version
+    id: program
     attributes:
-      label: Version
+      label: Program
       description: Where did this error take place?
       options:
         - Archipelago Minecraft Client
