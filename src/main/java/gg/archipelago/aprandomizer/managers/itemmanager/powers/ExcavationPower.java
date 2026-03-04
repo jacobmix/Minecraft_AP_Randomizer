@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -124,6 +125,10 @@ public class ExcavationPower implements Power {
         float baseDestroySpeed = baseBlock.getDestroySpeed(world, pos);
         for (BlockPos excavatePos : potentialPositions) {
             BlockState targetState = world.getBlockState(excavatePos);
+            // Skip bedrock and other unbreakable blocks (destroySpeed < 0)
+            if (targetState.is(Blocks.BEDROCK) || targetState.getDestroySpeed(world, excavatePos) < 0) {
+                continue;
+            }
             if (!targetState.isAir() &&
                 player.getDigSpeed(targetState, excavatePos) > 1.0f &&
                 baseDestroySpeed >= targetState.getDestroySpeed(world, excavatePos)) {

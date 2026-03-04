@@ -27,6 +27,9 @@ public class WorldData {
     // Pending bonuses for offline players: UUID -> (BonusType -> seconds remaining)
     private HashMap<UUID, HashMap<String, Integer>> pendingBonuses = new HashMap<>();
 
+    // Pending items for offline players: UUID -> list of item IDs
+    private HashMap<UUID, List<Long>> pendingItems = new HashMap<>();
+
     public static final int DRAGON_KILLED = 30;
     public static final int DRAGON_SPAWNED = 20;
     public static final int DRAGON_WAITING = 15;
@@ -131,5 +134,26 @@ public class WorldData {
 
     public void clearPendingBonuses(UUID uuid) {
         pendingBonuses.remove(uuid);
+    }
+
+    // Pending items methods
+    public HashMap<UUID, List<Long>> getAllPendingItems() {
+        return pendingItems;
+    }
+
+    public void setAllPendingItems(HashMap<UUID, List<Long>> items) {
+        this.pendingItems = items;
+    }
+
+    public List<Long> getPendingItems(UUID uuid) {
+        return pendingItems.get(uuid);
+    }
+
+    public void addPendingItem(UUID uuid, Long itemId) {
+        pendingItems.computeIfAbsent(uuid, k -> new ArrayList<>()).add(itemId);
+    }
+
+    public List<Long> removePendingItems(UUID uuid) {
+        return pendingItems.remove(uuid);
     }
 }

@@ -20,9 +20,9 @@ public class onServerTick {
         // Check for players at Y=-100 or below (every tick for responsiveness)
         for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
             if (player.getY() <= -100) {
-                // Teleport to safe position above chunk 0 (always accessible)
+                // Teleport to spawn platform (always accessible)
                 // This prevents softlock when falling into unlocked chunk areas
-                player.teleportTo(8.0, 129.0, 8.0);
+                player.teleportTo(-3.0, 130.0, -3.0);
             }
         }
 

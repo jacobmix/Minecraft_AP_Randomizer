@@ -34,9 +34,6 @@ public class TemporaryBonusManager {
     private static int originalExcavationLevel = -1;
     private static int excavationBoostActivePlayers = 0;
 
-    // Set of players who have logged in at least once (tracked by WorldData)
-    private static final Set<UUID> knownPlayers = new HashSet<>();
-
     /**
      * Grant a temporary bonus to all players.
      * If a player is online, apply immediately.
@@ -53,10 +50,12 @@ public class TemporaryBonusManager {
             }
         }
 
-        // Add pending bonus for offline known players
-        for (UUID uuid : knownPlayers) {
-            if (!isPlayerOnline(uuid)) {
-                APRandomizer.worldData.addPendingBonus(uuid, bonusType, BONUS_DURATION_SECONDS);
+        // Add pending bonus for offline known players (use WorldData directly)
+        if (APRandomizer.worldData != null) {
+            for (UUID uuid : APRandomizer.worldData.getKnownPlayers()) {
+                if (!isPlayerOnline(uuid)) {
+                    APRandomizer.worldData.addPendingBonus(uuid, bonusType, BONUS_DURATION_SECONDS);
+                }
             }
         }
 
@@ -102,32 +101,6 @@ public class TemporaryBonusManager {
     }
 
     /**
-     * Register a player as known (called on first join)
-     */
-    public static void registerPlayer(UUID uuid) {
-        knownPlayers.add(uuid);
-        // Also save to WorldData for persistence
-        if (APRandomizer.worldData != null) {
-            APRandomizer.worldData.addKnownPlayer(uuid);
-        }
-    }
-
-    /**
-     * Load known players from saved data
-     */
-    public static void loadKnownPlayers(Set<UUID> players) {
-        knownPlayers.clear();
-        knownPlayers.addAll(players);
-    }
-
-    /**
-     * Get all known players (for saving)
-     */
-    public static Set<UUID> getKnownPlayers() {
-        return new HashSet<>(knownPlayers);
-    }
-
-    /**
      * Called when a player joins - apply any pending bonuses
      */
     @SubscribeEvent
@@ -136,8 +109,10 @@ public class TemporaryBonusManager {
 
         UUID uuid = player.getUUID();
 
-        // Register as known player
-        registerPlayer(uuid);
+        // Register as known player (use WorldData directly)
+        if (APRandomizer.worldData != null) {
+            APRandomizer.worldData.addKnownPlayer(uuid);
+        }
 
         // Check for pending bonuses
         if (APRandomizer.worldData != null) {

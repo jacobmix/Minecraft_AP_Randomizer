@@ -26,7 +26,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.ArrayList;
 
 @Mod.EventBusSubscriber
 public class ItemManager {
@@ -90,12 +89,8 @@ public class ItemManager {
             add(new PermanentItem(new ItemStack(Items.DIAMOND_HOE), "hoe"));
             add(new PermanentItem(new ItemStack(Items.NETHERITE_HOE), "hoe"));
         }});
-        put(index++, new ProgressiveList<>() {{ //progressive hoe
+        put(index++, new ProgressiveList<>() {{ //progressive haste (nerfed to 1 tier)
             add(new PermanentEffect(new MobEffectInstance(MobEffects.DIG_SPEED, MobEffectInstance.INFINITE_DURATION, 0, true, false), "haste"));
-            add(new PermanentEffect(new MobEffectInstance(MobEffects.DIG_SPEED, MobEffectInstance.INFINITE_DURATION, 1, true, false), "haste"));
-            add(new PermanentEffect(new MobEffectInstance(MobEffects.DIG_SPEED, MobEffectInstance.INFINITE_DURATION, 2, true, false), "haste"));
-            add(new PermanentEffect(new MobEffectInstance(MobEffects.DIG_SPEED, MobEffectInstance.INFINITE_DURATION, 3, true, false), "haste"));
-            add(new PermanentEffect(new MobEffectInstance(MobEffects.DIG_SPEED, MobEffectInstance.INFINITE_DURATION, 4, true, false), "haste"));
         }});
 
     }};
@@ -151,12 +146,6 @@ public class ItemManager {
     }};
 
     private List<Long> receivedItems = new ArrayList<>();
-
-    // Track players who have joined at least once (by UUID)
-    private static final Set<UUID> knownPlayers = new HashSet<>();
-
-    // Queue of items per player (UUID -> list of item IDs to give when they rejoin)
-    private static final HashMap<UUID, List<Long>> pendingItemsPerPlayer = new HashMap<>();
 
     private static final HashMap<String, ItemStack> permanentItems = new HashMap<>();
     private static final HashMap<String, MobEffectInstance> permanentEffects = new HashMap<>();
@@ -233,12 +222,12 @@ public class ItemManager {
             TemporaryBonusManager.grantBonusToAll(TemporaryBonusManager.BONUS_EXCAVATION);
         }
 
-        if(APRandomizer.worldData.getIndex() <= index) {
+        if(APRandomizer.worldData.getIndex() < index) {
             APRandomizer.getServer().execute(() -> {
                 APRandomizer.worldData.setIndex(index);
 
-                // Check if this is a physical item or trap that requires players to receive
-                boolean isPhysicalItem = itemStacks.containsKey(itemID) || trapData.containsKey(itemID);
+                boolean isPhysicalItem = itemStacks.containsKey(itemID);
+                boolean isTrap = trapData.containsKey(itemID);
 
                 // Get online player UUIDs
                 Set<UUID> onlinePlayerUUIDs = new HashSet<>();
@@ -247,17 +236,17 @@ public class ItemManager {
                     giveItem(itemID, player);
                 }
 
-                // Queue item for offline known players
-                if (isPhysicalItem) {
-                    synchronized (pendingItemsPerPlayer) {
-                        for (UUID knownUUID : knownPlayers) {
-                            if (!onlinePlayerUUIDs.contains(knownUUID)) {
-                                pendingItemsPerPlayer.computeIfAbsent(knownUUID, k -> new ArrayList<>()).add(itemID);
-                                LOGGER.info("Queued item {} for offline player {}", itemID, knownUUID);
-                            }
+                // Queue item for offline known players (only physical items, NOT traps)
+                if (isPhysicalItem && !isTrap && APRandomizer.worldData != null) {
+                    for (UUID knownUUID : APRandomizer.worldData.getKnownPlayers()) {
+                        if (!onlinePlayerUUIDs.contains(knownUUID)) {
+                            APRandomizer.worldData.addPendingItem(knownUUID, itemID);
+                            LOGGER.info("Queued item {} for offline player {}", itemID, knownUUID);
                         }
                     }
                 }
+
+                APRandomizer.getServer().saveEverything(true, true, true);
             });
             return true;
         }
@@ -265,30 +254,68 @@ public class ItemManager {
     }
 
     /**
-     * Register a player as known (called on first join)
+     * Register a player as known (called on first join, persisted in WorldData)
      */
     public void registerPlayer(ServerPlayer player) {
+        if (APRandomizer.worldData == null) return;
+
         UUID uuid = player.getUUID();
-        boolean isNew = knownPlayers.add(uuid);
-        if (isNew) {
+        Set<UUID> known = APRandomizer.worldData.getKnownPlayers();
+        if (!known.contains(uuid)) {
+            APRandomizer.worldData.addKnownPlayer(uuid);
             LOGGER.info("Registered new player: {} ({})", player.getName().getString(), uuid);
         }
     }
 
     /**
-     * Give all pending items to a player (called when they rejoin)
+     * Give all pending items to a player (called when they rejoin, reads from WorldData)
      */
     public void givePendingItems(ServerPlayer player) {
+        if (APRandomizer.worldData == null) return;
+
         UUID uuid = player.getUUID();
-        synchronized (pendingItemsPerPlayer) {
-            List<Long> pending = pendingItemsPerPlayer.remove(uuid);
-            if (pending != null && !pending.isEmpty()) {
-                LOGGER.info("Giving {} pending items to {}", pending.size(), player.getName().getString());
-                for (Long itemID : pending) {
-                    giveItem(itemID, player);
-                }
+        List<Long> pending = APRandomizer.worldData.removePendingItems(uuid);
+        if (pending != null && !pending.isEmpty()) {
+            LOGGER.info("Giving {} pending items to {}", pending.size(), player.getName().getString());
+
+            // Build list of item names for the message
+            List<String> itemNames = new ArrayList<>();
+            for (Long itemID : pending) {
+                String name = getItemNameById(itemID);
+                itemNames.add(name);
+                giveItem(itemID, player);
             }
+
+            // Send message to player
+            if (!itemNames.isEmpty()) {
+                player.sendSystemMessage(Component.literal("§aWhile you were offline, you received:"));
+                for (String name : itemNames) {
+                    player.sendSystemMessage(Component.literal("  §7- §f" + name));
+                }
+                player.playNotifySound(
+                    net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP,
+                    net.minecraft.sounds.SoundSource.PLAYERS,
+                    1.0f, 1.0f
+                );
+            }
+            APRandomizer.getServer().saveEverything(true, true, true);
         }
+    }
+
+    /**
+     * Get the display name for an item ID (public for state file)
+     */
+    public String getItemNameById(Long itemID) {
+        if (itemStacks.containsKey(itemID)) {
+            return itemStacks.get(itemID).getHoverName().getString();
+        } else if (trapData.containsKey(itemID)) {
+            return "Trap";
+        } else if (progressiveItems.containsKey(itemID)) {
+            return "Progressive Item";
+        } else if (powers.containsKey(itemID)) {
+            return "Power Upgrade";
+        }
+        return "Item #" + itemID;
     }
 
     public List<Long> getAllItems() {

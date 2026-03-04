@@ -360,10 +360,6 @@ public class APRandomizer {
         jailPlayers = worldData.getJailPlayers();
         layerManager.setCheckedLayers(new HashSet<>(worldData.getLocations()));
 
-        // Load known players for temporary bonus system
-        TemporaryBonusManager.loadKnownPlayers(worldData.getKnownPlayers());
-
-
         //check if APMC data is present and if the seed matches what we expect
         if (apmcData.state == APMCData.State.VALID && !worldData.getSeedName().equals(apmcData.seed_name)) {
             //check to see if our worlddata is empty if it is then save the aproom data.

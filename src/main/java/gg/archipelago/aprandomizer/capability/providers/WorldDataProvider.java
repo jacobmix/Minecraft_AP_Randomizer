@@ -12,10 +12,7 @@ import net.minecraftforge.common.util.LazyOptional;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class WorldDataProvider implements ICapabilitySerializable<Tag> {
 
@@ -85,6 +82,18 @@ public class WorldDataProvider implements ICapabilitySerializable<Tag> {
         }
         nbt.put("pendingBonuses", pendingBonusesList);
 
+        // Serialize pending items
+        ListTag pendingItemsList = new ListTag();
+        for (var entry : worldData.getAllPendingItems().entrySet()) {
+            CompoundTag playerItemsTag = new CompoundTag();
+            playerItemsTag.putUUID("uuid", entry.getKey());
+
+            long[] itemIds = entry.getValue().stream().mapToLong(Long::longValue).toArray();
+            playerItemsTag.putLongArray("items", itemIds);
+            pendingItemsList.add(playerItemsTag);
+        }
+        nbt.put("pendingItems", pendingItemsList);
+
         return nbt;
     }
 
@@ -127,6 +136,23 @@ public class WorldDataProvider implements ICapabilitySerializable<Tag> {
                     pendingBonuses.put(uuid, bonuses);
                 }
                 worldData.setAllPendingBonuses(pendingBonuses);
+            }
+
+            // Deserialize pending items
+            if (read.contains("pendingItems")) {
+                HashMap<UUID, List<Long>> pendingItems = new HashMap<>();
+                ListTag pendingItemsList = read.getList("pendingItems", Tag.TAG_COMPOUND);
+                for (int i = 0; i < pendingItemsList.size(); i++) {
+                    CompoundTag playerItemsTag = pendingItemsList.getCompound(i);
+                    UUID uuid = playerItemsTag.getUUID("uuid");
+
+                    List<Long> items = new ArrayList<>();
+                    for (long itemId : playerItemsTag.getLongArray("items")) {
+                        items.add(itemId);
+                    }
+                    pendingItems.put(uuid, items);
+                }
+                worldData.setAllPendingItems(pendingItems);
             }
         }
     }

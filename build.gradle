@@ -215,3 +215,95 @@ publishing {
 repositories {
     mavenCentral()
 }
+
+// Task to convert .apmcdig files before running server
+task convertApmcdig {
+    description = 'Converts .apmcdig files from apmcdighere folder to APData'
+
+    doLast {
+        def apmcdigDir = file('run/apmcdighere')
+        def apDataDir = file('run/APData')
+
+        if (!apmcdigDir.exists()) {
+            println "No apmcdighere folder found, skipping conversion"
+            return
+        }
+
+        // Find .apmcdig files
+        def apmcdigFiles = apmcdigDir.listFiles({ it.name.endsWith('.apmcdig') } as FileFilter)
+        if (!apmcdigFiles || apmcdigFiles.length == 0) {
+            println "No .apmcdig files found in apmcdighere folder"
+            return
+        }
+
+        // Use the most recent one
+        def apmcdigFile = apmcdigFiles.sort { -it.lastModified() }.first()
+        println "Converting: ${apmcdigFile.name}"
+
+        // Create APData folder
+        apDataDir.mkdirs()
+
+        // Clean old files
+        apDataDir.listFiles()?.each { f ->
+            if (f.name.endsWith('.apmc') || f.name == 'archipelago.json') {
+                f.delete()
+                println "Removed old: ${f.name}"
+            }
+        }
+
+        // Read ZIP and extract
+        def zipFile = new java.util.zip.ZipFile(apmcdigFile)
+        try {
+            // Extract data.json and convert to base64
+            def dataEntry = zipFile.getEntry('data.json')
+            if (dataEntry) {
+                def dataJson = zipFile.getInputStream(dataEntry).text
+                def encoded = dataJson.bytes.encodeBase64().toString()
+
+                // Parse and show info
+                def slurper = new groovy.json.JsonSlurper()
+                def data = slurper.parseText(dataJson)
+                println "\n=== Seed Info ==="
+                println "  Player: ${data.player_name}"
+                println "  Seed: ${data.seed_name}"
+                println "  Client Version: ${data.client_version}"
+                println "  Chunk Count: ${data.chunk_count}"
+                println "  Progressive Chunks: ${data.progressive_chunks}"
+                println ""
+
+                // Write .apmc file
+                def baseName = apmcdigFile.name.replace('.apmcdig', '.apmc')
+                def apmcFile = new File(apDataDir, baseName)
+                apmcFile.text = encoded
+                println "Created: ${apmcFile.path}"
+            } else {
+                println "ERROR: data.json not found in .apmcdig"
+            }
+
+            // Extract archipelago.json
+            def archEntry = zipFile.getEntry('archipelago.json')
+            if (archEntry) {
+                def archJson = zipFile.getInputStream(archEntry).text
+                def archFile = new File(apDataDir, 'archipelago.json')
+                archFile.text = archJson
+                println "Created: ${archFile.path}"
+
+                // Show server
+                def slurper = new groovy.json.JsonSlurper()
+                def arch = slurper.parseText(archJson)
+                if (arch.server) {
+                    println "  Server: ${arch.server}"
+                }
+            }
+
+            println "\nDone!"
+        } finally {
+            zipFile.close()
+        }
+    }
+}
+
+// Make runServer depend on convertApmcdig
+tasks.matching { it.name == 'runServer' }.configureEach {
+    dependsOn convertApmcdig
+}
