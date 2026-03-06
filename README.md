@@ -81,6 +81,8 @@ Firewall/port:
 
 If Microsoft's Minecraft authentication servers are down you can set ``online-mode`` to ``false`` in ``server.properties``.
 
+Logs are located at: ``C:\ProgramData\Archipelago\logs`` & ``C:\ProgramData\Archipelago\Minecraft Dig Forge server\logs\latest.log``
+
 ## Tips:  
 Show file extensions: <https://www.howtogeek.com/205086/beginner-how-to-make-windows-show-file-extensions/>  
 Bonus apworlds (require ap restart):  
