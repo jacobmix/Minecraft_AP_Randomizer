@@ -94,6 +94,60 @@ public class WorldDataProvider implements ICapabilitySerializable<Tag> {
         }
         nbt.put("pendingItems", pendingItemsList);
 
+        // Serialize fossil system fields
+        nbt.putInt("fossilBalance", worldData.getFossilBalance());
+
+        // Serialize unlocked tiers
+        ListTag unlockedTiersList = new ListTag();
+        for (String tier : worldData.getUnlockedTiers()) {
+            CompoundTag tierTag = new CompoundTag();
+            tierTag.putString("tier", tier);
+            unlockedTiersList.add(tierTag);
+        }
+        nbt.put("unlockedTiers", unlockedTiersList);
+
+        // Serialize purchased tiers
+        CompoundTag purchasedTiersTag = new CompoundTag();
+        for (var entry : worldData.getPurchasedTiers().entrySet()) {
+            purchasedTiersTag.putInt(entry.getKey(), entry.getValue());
+        }
+        nbt.put("purchasedTiers", purchasedTiersTag);
+
+        // Serialize generated fossils (all fossil positions)
+        long[] generatedFossilsArray = worldData.getGeneratedFossils().stream().mapToLong(Long::longValue).toArray();
+        nbt.putLongArray("generatedFossils", generatedFossilsArray);
+
+        // Serialize collected fossils
+        long[] collectedFossilsArray = worldData.getCollectedFossils().stream().mapToLong(Long::longValue).toArray();
+        nbt.putLongArray("collectedFossils", collectedFossilsArray);
+
+        // Serialize purchased shop locations
+        int[] purchasedShopArray = worldData.getPurchasedShopLocations().stream().mapToInt(Integer::intValue).toArray();
+        nbt.putIntArray("purchasedShopLocations", purchasedShopArray);
+
+        // Serialize shop item flags
+        CompoundTag shopFlagsTag = new CompoundTag();
+        for (var entry : worldData.getShopItemFlags().entrySet()) {
+            shopFlagsTag.putInt(String.valueOf(entry.getKey()), entry.getValue());
+        }
+        nbt.put("shopItemFlags", shopFlagsTag);
+
+        // Serialize shop item names
+        CompoundTag shopNamesTag = new CompoundTag();
+        for (var entry : worldData.getShopItemNames().entrySet()) {
+            shopNamesTag.putString(String.valueOf(entry.getKey()), entry.getValue());
+        }
+        nbt.put("shopItemNames", shopNamesTag);
+
+        // Serialize shop item players
+        CompoundTag shopPlayersTag = new CompoundTag();
+        for (var entry : worldData.getShopItemPlayers().entrySet()) {
+            shopPlayersTag.putString(String.valueOf(entry.getKey()), entry.getValue());
+        }
+        nbt.put("shopItemPlayers", shopPlayersTag);
+
+        nbt.putBoolean("goalCompleted", worldData.isGoalCompleted());
+
         return nbt;
     }
 
@@ -153,6 +207,94 @@ public class WorldDataProvider implements ICapabilitySerializable<Tag> {
                     pendingItems.put(uuid, items);
                 }
                 worldData.setAllPendingItems(pendingItems);
+            }
+
+            // Deserialize fossil system fields
+            if (read.contains("fossilBalance")) {
+                worldData.setFossilBalance(read.getInt("fossilBalance"));
+            }
+
+            // Deserialize unlocked tiers
+            if (read.contains("unlockedTiers")) {
+                Set<String> unlockedTiers = new HashSet<>();
+                ListTag unlockedTiersList = read.getList("unlockedTiers", Tag.TAG_COMPOUND);
+                for (int i = 0; i < unlockedTiersList.size(); i++) {
+                    CompoundTag tierTag = unlockedTiersList.getCompound(i);
+                    unlockedTiers.add(tierTag.getString("tier"));
+                }
+                worldData.setUnlockedTiers(unlockedTiers);
+            }
+
+            // Deserialize purchased tiers
+            if (read.contains("purchasedTiers")) {
+                HashMap<String, Integer> purchasedTiers = new HashMap<>();
+                CompoundTag purchasedTiersTag = read.getCompound("purchasedTiers");
+                for (String key : purchasedTiersTag.getAllKeys()) {
+                    purchasedTiers.put(key, purchasedTiersTag.getInt(key));
+                }
+                worldData.setPurchasedTiers(purchasedTiers);
+            }
+
+            // Deserialize generated fossils (all fossil positions)
+            if (read.contains("generatedFossils")) {
+                Set<Long> generatedFossils = new HashSet<>();
+                for (long posLong : read.getLongArray("generatedFossils")) {
+                    generatedFossils.add(posLong);
+                }
+                worldData.setGeneratedFossils(generatedFossils);
+            }
+
+            // Deserialize collected fossils
+            if (read.contains("collectedFossils")) {
+                Set<Long> collectedFossils = new HashSet<>();
+                for (long posLong : read.getLongArray("collectedFossils")) {
+                    collectedFossils.add(posLong);
+                }
+                worldData.setCollectedFossils(collectedFossils);
+            }
+
+            // Deserialize purchased shop locations
+            if (read.contains("purchasedShopLocations")) {
+                Set<Integer> purchasedShop = new HashSet<>();
+                for (int idx : read.getIntArray("purchasedShopLocations")) {
+                    purchasedShop.add(idx);
+                }
+                worldData.setPurchasedShopLocations(purchasedShop);
+            }
+
+            // Deserialize shop item flags
+            if (read.contains("shopItemFlags")) {
+                Map<Integer, Integer> shopFlags = new HashMap<>();
+                CompoundTag shopFlagsTag = read.getCompound("shopItemFlags");
+                for (String key : shopFlagsTag.getAllKeys()) {
+                    shopFlags.put(Integer.parseInt(key), shopFlagsTag.getInt(key));
+                }
+                worldData.setShopItemFlags(shopFlags);
+            }
+
+            // Deserialize shop item names
+            if (read.contains("shopItemNames")) {
+                Map<Integer, String> shopNames = new HashMap<>();
+                CompoundTag shopNamesTag = read.getCompound("shopItemNames");
+                for (String key : shopNamesTag.getAllKeys()) {
+                    shopNames.put(Integer.parseInt(key), shopNamesTag.getString(key));
+                }
+                worldData.setShopItemNames(shopNames);
+            }
+
+            // Deserialize goal completed
+            if (read.contains("goalCompleted")) {
+                worldData.setGoalCompleted(read.getBoolean("goalCompleted"));
+            }
+
+            // Deserialize shop item players
+            if (read.contains("shopItemPlayers")) {
+                Map<Integer, String> shopPlayers = new HashMap<>();
+                CompoundTag shopPlayersTag = read.getCompound("shopItemPlayers");
+                for (String key : shopPlayersTag.getAllKeys()) {
+                    shopPlayers.put(Integer.parseInt(key), shopPlayersTag.getString(key));
+                }
+                worldData.setShopItemPlayers(shopPlayers);
             }
         }
     }

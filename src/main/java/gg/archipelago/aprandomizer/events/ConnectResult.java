@@ -10,6 +10,7 @@ import io.github.archipelagomw.ClientStatus;
 import io.github.archipelagomw.events.ArchipelagoEventListener;
 import io.github.archipelagomw.events.ConnectionResultEvent;
 import io.github.archipelagomw.network.ConnectionResult;
+import io.github.archipelagomw.network.client.CreateAsHint;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -42,6 +43,9 @@ public class ConnectResult {
 
             //give our item manager the list of received items to give to players as they log in.
             APRandomizer.getItemManager().setReceivedItems(client.getItemManager().getReceivedItemIDs());
+
+            // Scout Item Shop locations to get item classifications
+            scoutItemShopLocations();
 
             // Auto-start the game when connected
             APRandomizer.server.execute(() -> {
@@ -76,6 +80,18 @@ public class ConnectResult {
                 APRandomizer.scheduleReconnectRetry(pendingAddress);
             }
         }
+    }
+
+    /**
+     * Scout the 27 Item Shop locations to get item classifications and names
+     */
+    private void scoutItemShopLocations() {
+        java.util.ArrayList<Long> locationIDs = new java.util.ArrayList<>();
+        for (int i = 0; i < 27; i++) {
+            locationIDs.add(54800L + i);
+        }
+        client.scoutLocations(locationIDs, CreateAsHint.BROADCAST_NEW);
+        LOGGER.info("Scouting 27 Item Shop locations (54800-54826)");
     }
 
     /**

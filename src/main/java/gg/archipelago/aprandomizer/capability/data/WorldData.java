@@ -3,6 +3,7 @@ package gg.archipelago.aprandomizer.capability.data;
 import com.google.common.collect.Lists;
 
 import java.util.*;
+import java.util.Map;
 
 public class WorldData {
 
@@ -29,6 +30,25 @@ public class WorldData {
 
     // Pending items for offline players: UUID -> list of item IDs
     private HashMap<UUID, List<Long>> pendingItems = new HashMap<>();
+
+    // Fossil system fields
+    private int fossilBalance = 0;
+    private Set<String> unlockedTiers = new HashSet<>();      // "tools_2", "haste_1"
+    private Map<String, Integer> purchasedTiers = new HashMap<>(); // {"tools": 2}
+    private Set<Long> generatedFossils = new HashSet<>();     // All fossil positions (BlockPos.asLong())
+    private Set<Long> collectedFossils = new HashSet<>();     // Collected fossil positions (BlockPos.asLong())
+
+    // Item Shop: purchased shop location indices (0-19)
+    private Set<Integer> purchasedShopLocations = new HashSet<>();
+    // Item Shop: cached item flags from scouting (index -> flags)
+    private Map<Integer, Integer> shopItemFlags = new HashMap<>();
+    // Item Shop: cached item names from scouting (index -> name)
+    private Map<Integer, String> shopItemNames = new HashMap<>();
+    // Item Shop: cached player names from scouting (index -> player name)
+    private Map<Integer, String> shopItemPlayers = new HashMap<>();
+
+    // Goal completion flag - stops receiving AP items after goal + release
+    private boolean goalCompleted = false;
 
     public static final int DRAGON_KILLED = 30;
     public static final int DRAGON_SPAWNED = 20;
@@ -155,5 +175,172 @@ public class WorldData {
 
     public List<Long> removePendingItems(UUID uuid) {
         return pendingItems.remove(uuid);
+    }
+
+    // Fossil system methods
+    public int getFossilBalance() {
+        return fossilBalance;
+    }
+
+    public void setFossilBalance(int balance) {
+        this.fossilBalance = balance;
+    }
+
+    public void addFossils(int amount) {
+        this.fossilBalance += amount;
+    }
+
+    public boolean spendFossils(int amount) {
+        if (this.fossilBalance >= amount) {
+            this.fossilBalance -= amount;
+            return true;
+        }
+        return false;
+    }
+
+    // Unlocked tiers methods
+    public Set<String> getUnlockedTiers() {
+        return unlockedTiers;
+    }
+
+    public void setUnlockedTiers(Set<String> tiers) {
+        this.unlockedTiers = tiers;
+    }
+
+    public void unlockTier(String tierKey) {
+        this.unlockedTiers.add(tierKey);
+    }
+
+    public boolean isTierUnlocked(String tierKey) {
+        return this.unlockedTiers.contains(tierKey);
+    }
+
+    // Purchased tiers methods
+    public Map<String, Integer> getPurchasedTiers() {
+        return purchasedTiers;
+    }
+
+    public void setPurchasedTiers(Map<String, Integer> tiers) {
+        this.purchasedTiers = tiers;
+    }
+
+    public void setPurchasedTier(String category, int tier) {
+        this.purchasedTiers.put(category, tier);
+    }
+
+    public int getPurchasedTier(String category) {
+        return this.purchasedTiers.getOrDefault(category, 0);
+    }
+
+    // Collected fossils methods (to prevent double collection)
+    public Set<Long> getCollectedFossils() {
+        return collectedFossils;
+    }
+
+    public void setCollectedFossils(Set<Long> fossils) {
+        this.collectedFossils = fossils;
+    }
+
+    public boolean isFossilCollected(long posLong) {
+        return this.collectedFossils.contains(posLong);
+    }
+
+    public void markFossilCollected(long posLong) {
+        this.collectedFossils.add(posLong);
+    }
+
+    // Generated fossils methods (all fossil positions in the world)
+    public Set<Long> getGeneratedFossils() {
+        return generatedFossils;
+    }
+
+    public void setGeneratedFossils(Set<Long> fossils) {
+        this.generatedFossils = fossils;
+    }
+
+    public void addGeneratedFossil(long posLong) {
+        this.generatedFossils.add(posLong);
+    }
+
+    public boolean isFossilPosition(long posLong) {
+        return this.generatedFossils.contains(posLong);
+    }
+
+    public boolean areFossilsGenerated() {
+        return !this.generatedFossils.isEmpty();
+    }
+
+    // Item Shop methods
+    public Set<Integer> getPurchasedShopLocations() {
+        return purchasedShopLocations;
+    }
+
+    public void setPurchasedShopLocations(Set<Integer> locations) {
+        this.purchasedShopLocations = locations;
+    }
+
+    public boolean isShopLocationPurchased(int index) {
+        return purchasedShopLocations.contains(index);
+    }
+
+    public void markShopLocationPurchased(int index) {
+        purchasedShopLocations.add(index);
+    }
+
+    public Map<Integer, Integer> getShopItemFlags() {
+        return shopItemFlags;
+    }
+
+    public void setShopItemFlags(Map<Integer, Integer> flags) {
+        this.shopItemFlags = flags;
+    }
+
+    public void setShopItemFlag(int index, int flags) {
+        this.shopItemFlags.put(index, flags);
+    }
+
+    public int getShopItemFlag(int index) {
+        return this.shopItemFlags.getOrDefault(index, 0);
+    }
+
+    public Map<Integer, String> getShopItemNames() {
+        return shopItemNames;
+    }
+
+    public void setShopItemNames(Map<Integer, String> names) {
+        this.shopItemNames = names;
+    }
+
+    public void setShopItemName(int index, String name) {
+        this.shopItemNames.put(index, name);
+    }
+
+    public String getShopItemName(int index) {
+        return this.shopItemNames.getOrDefault(index, "Item Shop " + (index + 1));
+    }
+
+    public Map<Integer, String> getShopItemPlayers() {
+        return shopItemPlayers;
+    }
+
+    public void setShopItemPlayers(Map<Integer, String> players) {
+        this.shopItemPlayers = players;
+    }
+
+    public void setShopItemPlayer(int index, String playerName) {
+        this.shopItemPlayers.put(index, playerName);
+    }
+
+    public String getShopItemPlayer(int index) {
+        return this.shopItemPlayers.getOrDefault(index, "");
+    }
+
+    // Goal completion methods
+    public boolean isGoalCompleted() {
+        return goalCompleted;
+    }
+
+    public void setGoalCompleted(boolean completed) {
+        this.goalCompleted = completed;
     }
 }

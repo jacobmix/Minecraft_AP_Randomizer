@@ -57,8 +57,13 @@ public class ExcavationPower implements Power {
         switch (face) {
             case DOWN, UP -> {
                 if (level >= 1) {
-                    if ((player.getYHeadRot() > 45 && player.getYHeadRot() < 135) ||
-                            (player.getYHeadRot() > -135 && player.getYHeadRot() < -45)) {
+                    // Normalize rotation to 0-360
+                    float rot = player.getYHeadRot() % 360;
+                    if (rot < 0) rot += 360;
+                    // 0=south, 90=west, 180=north, 270=east
+                    // If facing roughly N/S (315-45 or 135-225), extend E/W
+                    // If facing roughly E/W (45-135 or 225-315), extend N/S
+                    if ((rot >= 45 && rot < 135) || (rot >= 225 && rot < 315)) {
                         potentialPositions.add(pos.north());
                         potentialPositions.add(pos.south());
                     } else {
@@ -142,5 +147,19 @@ public class ExcavationPower implements Power {
     @Override
     public void grantPower() {
         level++;
+    }
+
+    /**
+     * Set the excavation level directly (used by shop system)
+     */
+    public static void setLevel(int newLevel) {
+        level = newLevel;
+    }
+
+    /**
+     * Get the current excavation level
+     */
+    public static int getLevel() {
+        return level;
     }
 }

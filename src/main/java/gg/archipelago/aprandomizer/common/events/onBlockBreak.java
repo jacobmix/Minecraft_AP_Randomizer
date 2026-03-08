@@ -3,6 +3,7 @@ package gg.archipelago.aprandomizer.common.events;
 import gg.archipelago.aprandomizer.APRandomizer;
 import gg.archipelago.aprandomizer.managers.BlockProgressManager;
 import gg.archipelago.aprandomizer.managers.BlocksBrokenManager;
+import gg.archipelago.aprandomizer.managers.FossilManager;
 import gg.archipelago.aprandomizer.managers.advancementmanager.CustomAdvancementHandler;
 import gg.archipelago.aprandomizer.managers.itemmanager.powers.ExcavationPower;
 import net.minecraft.core.BlockPos;
@@ -31,6 +32,10 @@ public class onBlockBreak {
     static void onExplosionEvent(ExplosionEvent.Detonate event) {
         for (BlockPos affectedBlock : event.getAffectedBlocks()) {
             APRandomizer.getLayerManager().addLayerCheck(affectedBlock.getY());
+            // Remove any X-ray shulker at this position
+            FossilManager.removeXrayShulkerAt(affectedBlock);
+            // Check for fossils in exploded blocks
+            FossilManager.checkAndCollectFossil(affectedBlock, null);
         }
     }
 
@@ -42,6 +47,13 @@ public class onBlockBreak {
         }
 
         BlockPos pos = event.getPos();
+        ServerPlayer player = (ServerPlayer) event.getPlayer();
+
+        // Always remove any X-ray shulker at this position first
+        FossilManager.removeXrayShulkerAt(pos);
+
+        // Check for fossils in the broken block
+        FossilManager.checkAndCollectFossil(pos, player);
 
         if(event.getLevel().getBlockState(pos).getBlock().equals(Blocks.TNT)) {
             event.setCanceled(true);
@@ -63,7 +75,11 @@ public class onBlockBreak {
             int oz = cz * 16;
             for (int x = ox; x < ox + 16; x++) {
                 for (int z = oz; z < oz + 16; z++) {
-                    event.getLevel().destroyBlock(new BlockPos(x, layer, z), true);
+                    BlockPos blockPos = new BlockPos(x, layer, z);
+                    // Check for fossils before breaking
+                    FossilManager.removeXrayShulkerAt(blockPos);
+                    FossilManager.checkAndCollectFossil(blockPos, player);
+                    event.getLevel().destroyBlock(blockPos, true);
                 }
             }
             event.getPlayer().getInventory().removeItem(event.getPlayer().getMainHandItem());

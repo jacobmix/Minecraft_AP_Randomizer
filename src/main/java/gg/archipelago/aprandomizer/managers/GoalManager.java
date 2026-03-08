@@ -3,13 +3,20 @@ package gg.archipelago.aprandomizer.managers;
 import gg.archipelago.aprandomizer.managers.advancementmanager.LayerManager;
 import gg.archipelago.aprandomizer.APRandomizer;
 import gg.archipelago.aprandomizer.APStorage.APMCData;
+import gg.archipelago.aprandomizer.common.Utils.Utils;
 import io.github.archipelagomw.ClientStatus;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.bossevents.CustomBossEvent;
 import net.minecraft.server.bossevents.CustomBossEvents;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.BossEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -81,6 +88,33 @@ public class GoalManager {
 
         if(layerManager.getFinishedAmount() >= getTotalChecks()) {
             APRandomizer.getAP().setGameState(ClientStatus.CLIENT_GOAL);
+
+            // Mark goal as completed to stop receiving items
+            if (APRandomizer.worldData != null && !APRandomizer.worldData.isGoalCompleted()) {
+                APRandomizer.worldData.setGoalCompleted(true);
+                showVictoryCelebration();
+            }
         }
+    }
+
+    private void showVictoryCelebration() {
+        APRandomizer.getServer().execute(() -> {
+            for (ServerPlayer player : APRandomizer.getServer().getPlayerList().getPlayers()) {
+                // Big title on screen
+                player.connection.send(new ClientboundSetTitlesAnimationPacket(20, 100, 40));
+                player.connection.send(new ClientboundSetTitleTextPacket(
+                    Component.literal("§6§lVICTORY!")));
+                player.connection.send(new ClientboundSetSubtitleTextPacket(
+                    Component.literal("§eAll layers have been dug!")));
+
+                // Play victory sounds
+                player.playNotifySound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.MASTER, 1.0f, 1.0f);
+            }
+
+            Utils.sendMessageToAll("§6§l=============================");
+            Utils.sendMessageToAll("§e§l  GOAL COMPLETED!");
+            Utils.sendMessageToAll("§a  All layers have been dug!");
+            Utils.sendMessageToAll("§6§l=============================");
+        });
     }
 }

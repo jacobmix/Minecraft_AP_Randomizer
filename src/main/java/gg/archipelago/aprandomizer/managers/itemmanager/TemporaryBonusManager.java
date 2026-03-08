@@ -60,7 +60,23 @@ public class TemporaryBonusManager {
         }
 
         String bonusName = bonusType.equals(BONUS_HASTE) ? "Haste Boost" : "Excavation Boost";
-        Utils.sendMessageToAll("Received " + bonusName + "! (" + BONUS_DURATION_SECONDS + " seconds)");
+
+        // Check if any player already had this bonus active (means it was extended)
+        boolean wasExtended = false;
+        int maxRemainingSeconds = 0;
+        for (ServerPlayer p : APRandomizer.getServer().getPlayerList().getPlayers()) {
+            int remaining = getRemainingSeconds(p.getUUID(), bonusType);
+            if (remaining > BONUS_DURATION_SECONDS) {
+                wasExtended = true;
+                maxRemainingSeconds = Math.max(maxRemainingSeconds, remaining);
+            }
+        }
+
+        if (wasExtended) {
+            Utils.sendMessageToAll("§6" + bonusName + " extended! §7(" + maxRemainingSeconds + "s remaining)");
+        } else {
+            Utils.sendMessageToAll("§aReceived " + bonusName + "! §7(" + BONUS_DURATION_SECONDS + " seconds)");
+        }
     }
 
     /**

@@ -3,7 +3,9 @@ package gg.archipelago.aprandomizer.common.events;
 import gg.archipelago.aprandomizer.APRandomizer;
 import gg.archipelago.aprandomizer.managers.BlockProgressManager;
 import gg.archipelago.aprandomizer.managers.BlocksBrokenManager;
+import gg.archipelago.aprandomizer.managers.FossilManager;
 import gg.archipelago.aprandomizer.managers.advancementmanager.CustomAdvancementHandler;
+import gg.archipelago.aprandomizer.managers.itemmanager.ItemManager;
 import gg.archipelago.aprandomizer.managers.itemmanager.powers.ExcavationPower;
 import gg.archipelago.aprandomizer.mixin.ServerPlayerGameModeAccessor;
 import net.minecraft.core.BlockPos;
@@ -86,6 +88,9 @@ public class onBlockProgress {
                 // Calculate this player's dig speed for this block
                 float playerDigSpeed = serverPlayer.getDigSpeed(state, currentMiningPos);
 
+                // Apply efficiency upgrade multiplier
+                playerDigSpeed *= ItemManager.getEfficiencyMultiplier();
+
                 // Register this player as mining this block with their dig speed
                 BlockProgressManager.registerMiner(currentMiningPos, serverPlayer, playerDigSpeed);
                 lastMiningPos.put(playerId, currentMiningPos.immutable());
@@ -107,6 +112,8 @@ public class onBlockProgress {
                         BlockState excavateState = level.getBlockState(excavatePos);
                         if (!excavateState.isAir()) {
                             float excavateDigSpeed = serverPlayer.getDigSpeed(excavateState, excavatePos);
+                            // Apply efficiency upgrade multiplier
+                            excavateDigSpeed *= ItemManager.getEfficiencyMultiplier();
                             BlockProgressManager.registerMiner(excavatePos, serverPlayer, excavateDigSpeed);
 
                             float excavateDestroySpeed = excavateState.getDestroySpeed(level, excavatePos);
@@ -118,6 +125,9 @@ public class onBlockProgress {
                                 if (excavateShouldBreak) {
                                     BlockProgressManager.clearProgress(excavatePos);
                                     BlockProgressManager.removeCrackAnimation(level, excavatePos);
+                                    // Check for fossils before breaking
+                                    FossilManager.removeXrayShulkerAt(excavatePos);
+                                    FossilManager.checkAndCollectFossil(excavatePos, serverPlayer);
                                     level.destroyBlock(excavatePos, true, serverPlayer);
                                     BlocksBrokenManager.addBlockBroken(serverPlayer);
                                     APRandomizer.getLayerManager().addLayerCheck(excavatePos.getY());
@@ -138,6 +148,10 @@ public class onBlockProgress {
                         BlockProgressManager.clearProgress(currentMiningPos);
                         BlockProgressManager.removeCrackAnimation(level, currentMiningPos);
                         lastMiningPos.remove(playerId);
+
+                        // Check for fossils before breaking
+                        FossilManager.removeXrayShulkerAt(currentMiningPos);
+                        FossilManager.checkAndCollectFossil(currentMiningPos, serverPlayer);
 
                         // Check for True Golden Pick
                         if (serverPlayer.getMainHandItem().getOrCreateTag().getBoolean("truepick")) {
@@ -186,7 +200,11 @@ public class onBlockProgress {
         int oz = cz * 16;
         for (int x = ox; x < ox + 16; x++) {
             for (int z = oz; z < oz + 16; z++) {
-                level.destroyBlock(new BlockPos(x, layer, z), true);
+                BlockPos blockPos = new BlockPos(x, layer, z);
+                // Check for fossils before breaking
+                FossilManager.removeXrayShulkerAt(blockPos);
+                FossilManager.checkAndCollectFossil(blockPos, player);
+                level.destroyBlock(blockPos, true);
             }
         }
 

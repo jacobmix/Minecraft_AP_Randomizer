@@ -5,6 +5,7 @@ import gg.archipelago.aprandomizer.APStorage.APMCData;
 import gg.archipelago.aprandomizer.capability.APCapabilities;
 import gg.archipelago.aprandomizer.capability.data.WorldData;
 import gg.archipelago.aprandomizer.common.Utils.Utils;
+import gg.archipelago.aprandomizer.managers.FossilManager;
 import gg.archipelago.aprandomizer.managers.GoalManager;
 import gg.archipelago.aprandomizer.managers.advancementmanager.LayerManager;
 import gg.archipelago.aprandomizer.managers.itemmanager.ItemManager;
@@ -167,8 +168,59 @@ public class APRandomizer {
     }
 
     public static void setJailPlayers(boolean jailPlayers) {
+        boolean wasJailed = APRandomizer.jailPlayers;
         APRandomizer.jailPlayers = jailPlayers;
         worldData.setJailPlayers(jailPlayers);
+
+        // When game starts (jailPlayers goes from true to false), initialize starting tools
+        if (wasJailed && !jailPlayers && itemManager != null) {
+            itemManager.initializeStartingTools();
+        }
+    }
+
+    /**
+     * Restore purchased upgrades from saved world data
+     * Called on server start if the game was already started
+     */
+    private static void restorePurchasedUpgrades() {
+        if (worldData == null || itemManager == null) return;
+
+        LOGGER.info("Restoring purchased upgrades from world data...");
+
+        // Restore tools tier
+        int toolsTier = worldData.getPurchasedTier("tools");
+        if (toolsTier > 0) {
+            itemManager.applyShopUpgrade("tools", toolsTier);
+            LOGGER.info("Restored tools tier: {}", toolsTier);
+        }
+
+        // Restore haste tier
+        int hasteTier = worldData.getPurchasedTier("haste");
+        if (hasteTier > 0) {
+            itemManager.applyShopUpgrade("haste", hasteTier);
+            LOGGER.info("Restored haste tier: {}", hasteTier);
+        }
+
+        // Restore excavation tier
+        int excavationTier = worldData.getPurchasedTier("excavation");
+        if (excavationTier > 0) {
+            itemManager.applyShopUpgrade("excavation", excavationTier);
+            LOGGER.info("Restored excavation tier: {}", excavationTier);
+        }
+
+        // Restore reach tier
+        int reachTier = worldData.getPurchasedTier("reach");
+        if (reachTier > 0) {
+            itemManager.applyShopUpgrade("reach", reachTier);
+            LOGGER.info("Restored reach tier: {}", reachTier);
+        }
+
+        // Restore efficiency tier
+        int efficiencyTier = worldData.getPurchasedTier("efficiency");
+        if (efficiencyTier > 0) {
+            itemManager.applyShopUpgrade("efficiency", efficiencyTier);
+            LOGGER.info("Restored efficiency tier: {}", efficiencyTier);
+        }
     }
 
     public static BlockPos getJailPosition() {
@@ -338,6 +390,11 @@ public class APRandomizer {
         itemManager = new ItemManager();
         goalManager = new GoalManager();
 
+        // Initialize FossilManager with world seed
+        if (apmcData != null && apmcData.state == APMCData.State.VALID) {
+            FossilManager.initialize(apmcData.world_seed);
+        }
+
         ServerLevel overworld = server.overworld();
 
         server.getGameRules().getRule(GameRules.RULE_LIMITED_CRAFTING).set(true, server);
@@ -359,6 +416,13 @@ public class APRandomizer {
         worldData = overworld.getCapability(APCapabilities.WORLD_DATA).orElseThrow(AssertionError::new);
         jailPlayers = worldData.getJailPlayers();
         layerManager.setCheckedLayers(new HashSet<>(worldData.getLocations()));
+
+        // If game has already started (not jailed), restore purchased upgrades and tools
+        if (!jailPlayers) {
+            itemManager.initializeStartingTools();
+            restorePurchasedUpgrades();
+
+        }
 
         //check if APMC data is present and if the seed matches what we expect
         if (apmcData.state == APMCData.State.VALID && !worldData.getSeedName().equals(apmcData.seed_name)) {
@@ -467,6 +531,9 @@ public class APRandomizer {
             }
 
             LOGGER.info("Dig mode: placed {} chunks in {}x{} grid", chunksPlaced, side, side);
+
+            // Generate fossils AFTER world generation is complete
+            FossilManager.generateFossils(overworld, chunkCount);
 
             overworld.setDefaultSpawnPos(new BlockPos(-3, 129, -3), 0f);
             jailCenter = overworld.getSharedSpawnPos();

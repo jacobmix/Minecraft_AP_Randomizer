@@ -13,6 +13,11 @@ public class ReceiveItem {
 
     @ArchipelagoEventListener
     public static void onReceiveItem(ReceiveItemEvent event) {
+        // Stop receiving items after goal completion
+        if (APRandomizer.worldData != null && APRandomizer.worldData.isGoalCompleted()) {
+            return;
+        }
+
         APRandomizer.getItemManager().giveItemToAll(event.getItemID(), event.getIndex());
 
         // Spawn particles around all players when receiving an item

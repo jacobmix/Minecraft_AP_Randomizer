@@ -2,6 +2,7 @@ package gg.archipelago.aprandomizer.common.events;
 
 import gg.archipelago.aprandomizer.APRandomizer;
 import gg.archipelago.aprandomizer.common.Utils.Utils;
+import gg.archipelago.aprandomizer.managers.FossilManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.TickEvent;
@@ -12,8 +13,12 @@ import net.minecraftforge.fml.common.Mod;
 public class onServerTick {
 
     static double count = 0;
+
     @SubscribeEvent
     static public void serverTickEvent(TickEvent.ServerTickEvent event) {
+        // Tick X-ray sessions
+        FossilManager.tickXraySessions();
+
         if(APRandomizer.isJailPlayers())
             return;
 

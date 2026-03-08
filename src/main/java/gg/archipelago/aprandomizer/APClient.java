@@ -4,6 +4,7 @@ import gg.archipelago.aprandomizer.common.Utils.Utils;
 import gg.archipelago.aprandomizer.events.AttemptedConnection;
 import gg.archipelago.aprandomizer.events.ConnectResult;
 import gg.archipelago.aprandomizer.events.PrintJson;
+import gg.archipelago.aprandomizer.events.LocationInfo;
 import gg.archipelago.aprandomizer.events.ReceiveItem;
 import io.github.archipelagomw.Client;
 import io.github.archipelagomw.flags.ItemsHandling;
@@ -34,6 +35,7 @@ public class APClient extends Client {
         this.getEventManager().registerListener(new AttemptedConnection());
         this.getEventManager().registerListener(new ReceiveItem());
         this.getEventManager().registerListener(new PrintJson(this));
+        this.getEventManager().registerListener(new LocationInfo());
     }
 
     public SlotData getSlotData() {
