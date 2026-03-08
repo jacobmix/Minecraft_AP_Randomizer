@@ -3,17 +3,20 @@ from worlds.AutoWorld import World
 
 
 def get_rules_lookup(player: int):
+    # Progressive Tools: 1=Stone, 2=Iron, 3=Diamond, 4=Netherite
+    # Progressive Efficiency: 1=Eff I, 2=Eff II, 3=Eff III
+    # Progressive Haste: 1=Haste I
     rules_lookup = {
         "entrances": {
-            "Top[exit]": lambda state: state.has('Progressive Shovel', player, 1),
-            "Shovel1[exit]": lambda state: state.has('Progressive Shovel', player, 2),
-            "Shovel2[exit]": lambda state: state.has('Progressive Pickaxe', player, 1),
-            "Pick1[exit]": lambda state: state.has('Progressive Pickaxe', player, 2),
+            "Top[exit]": lambda state: state.has('Progressive Tools', player, 1),
+            "Shovel1[exit]": lambda state: state.has('Progressive Tools', player, 2),
+            "Shovel2[exit]": lambda state: state.has('Progressive Tools', player, 2),
+            "Pick1[exit]": lambda state: state.has('Progressive Tools', player, 3),
             "Pick2[exit]": lambda state: state.has('Progressive Haste', player, 1),
-            "Haste1[exit]": lambda state: state.has('Progressive Pickaxe', player, 3),
-            "Pick3[exit]": lambda state: state.has('Progressive Pickaxe', player, 4),
-            "Pick4[exit]": lambda state: state.has('Progressive Haste', player, 2),
-            "Haste2[exit]": lambda state: state.has('Progressive Pickaxe', player, 5)
+            "Haste1[exit]": lambda state: state.has('Progressive Tools', player, 4),
+            "Pick3[exit]": lambda state: state.has('Progressive Efficiency', player, 1),
+            "Pick4[exit]": lambda state: state.has('Progressive Efficiency', player, 2),
+            "Haste2[exit]": lambda state: state.has('Progressive Efficiency', player, 3)
         }
     }
     return rules_lookup
@@ -57,6 +60,7 @@ def set_rules(mc_world: World) -> None:
                         loc.access_rule = lambda state, orig=original_rule, n=needed: \
                             orig(state) and state.has("World Barrier Expansion", player, n)
 
-    multiworld.completion_condition[player] = lambda state: state.has("Progressive Pickaxe", player, 5) \
-                                                            and state.has("Progressive Shovel", player, 2) \
-                                                            and state.has("Progressive Haste", player, 2)
+    # Completion requires max tools, haste and efficiency
+    multiworld.completion_condition[player] = lambda state: state.has("Progressive Tools", player, 4) \
+                                                            and state.has("Progressive Haste", player, 1) \
+                                                            and state.has("Progressive Efficiency", player, 3)

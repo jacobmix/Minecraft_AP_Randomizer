@@ -1,10 +1,8 @@
 {
 	"all_items": [
-		"Progressive Pickaxe",
-		"Progressive Shovel",
-		"Progressive Axe",
-		"Progressive Hoe",
+		"Progressive Tools",
 		"Progressive Haste",
+		"Progressive Excavation",
 		"TNT",
 		"Golden Pick",
 		"True Golden Pick",
@@ -23,24 +21,32 @@
 		"Wingardium Leviosa",
 		"About Face",
 		"Acme Delivery",
-		"Progressive Excavation",
+		"Fossil Xray",
 		"World Barrier Expansion",
 		"Haste Boost",
-		"Excavation Boost"
+		"Excavation Boost",
+		"Progressive Reach",
+		"Progressive Efficiency",
+		"Meteor Shower",
+		"Earthquake",
+		"Explosive Bow",
+		"Increased Gravity"
 	],
 	"progression_items": [
-		"Progressive Pickaxe",
-		"Progressive Shovel",
-		"Progressive Axe",
+		"Progressive Tools",
 		"Progressive Haste",
-		"World Barrier Expansion"
+		"Progressive Excavation",
+		"World Barrier Expansion",
+		"Progressive Reach",
+		"Progressive Efficiency"
 	],
 	"useful_items": [
 		"TNT",
 		"Golden Pick",
-		"Progressive Excavation",
 		"Haste Boost",
-		"Excavation Boost"
+		"Excavation Boost",
+		"Fossil Xray",
+		"Explosive Bow"
 	],
 	"trap_items": [
 		"Bee Trap",
@@ -56,18 +62,20 @@
 		"Pet the kitty",
 		"Wingardium Leviosa",
 		"About Face",
-		"Acme Delivery"
+		"Acme Delivery",
+		"Meteor Shower",
+		"Increased Gravity"
 	],
 	"required_pool": {
-	    "Progressive Pickaxe": 7,
-	    "Progressive Shovel": 6,
-	    "Progressive Axe": 4,
-	    "Progressive Haste": 1,
-	    "True Golden Pick": 8,
-		"Progressive Excavation" : 3
+		"Progressive Tools": 4,
+		"Progressive Haste": 1,
+		"Progressive Excavation": 3,
+		"Progressive Reach": 1,
+		"Progressive Efficiency": 3,
+		"True Golden Pick": 8
 	},
 	"junk_weights": {
-	    "TNT": 10,
+		"TNT": 10,
 		"Goon Squad": 5,
 		"Bee Trap": 5,
 		"Creeper Trap": 5,
@@ -85,6 +93,10 @@
 		"Golden Pick": 5,
 		"True Golden Pick": 2,
 		"Haste Boost": 3,
-		"Excavation Boost": 3
+		"Excavation Boost": 3,
+		"Fossil Xray": 2,
+		"Meteor Shower": 3,
+		"Explosive Bow": 2,
+		"Increased Gravity": 3
 	}
 }

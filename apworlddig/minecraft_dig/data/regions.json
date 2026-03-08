@@ -10,7 +10,8 @@
         ["Pick3", ["Pick3[exit]"], {"top": 45, "bottom": 9}],
         ["Pick4", ["Pick4[exit]"], {"top": 8, "bottom": -35}],
         ["Haste2", ["Haste2[exit]"], {"top": -36, "bottom": -49}],
-        ["Pick5", [], {"top": -50, "bottom": -63}]
+        ["Pick5", [], {"top": -50, "bottom": -63}],
+        ["Item Shop", [], null]
     ],
     "mandatory_connections": [
         ["New World", "Top"],

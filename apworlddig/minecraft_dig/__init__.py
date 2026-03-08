@@ -103,6 +103,7 @@ class MinecraftDigWorld(World):
 
     def create_regions(self) -> None:
         chunk_count = self.options.chunk_count.value
+
         # Create regions and generate location names
         for region_name, exits, layer_range in Constants.region_info["regions"]:
             r = Region(region_name, self.player, self.multiworld)
@@ -120,6 +121,14 @@ class MinecraftDigWorld(World):
                                                 self.location_name_to_id.get(loc_name, None), r)
                         r.locations.append(loc)
 
+            # Add Item Shop locations to the Item Shop region
+            if region_name == "Item Shop":
+                for i in range(1, Constants.ITEM_SHOP_COUNT + 1):
+                    loc_name = f"Item Shop {i}"
+                    loc = MinecraftDigLocation(self.player, loc_name,
+                                            self.location_name_to_id.get(loc_name, None), r)
+                    r.locations.append(loc)
+
             self.multiworld.regions.append(r)
 
         # Bind mandatory connections
@@ -128,10 +137,14 @@ class MinecraftDigWorld(World):
             r = self.multiworld.get_region(region_name, self.player)
             e.connect(r)
 
+        # Connect Menu directly to Item Shop (always accessible)
+        menu = self.multiworld.get_region("Menu", self.player)
+        shop = self.multiworld.get_region("Item Shop", self.player)
+        menu.connect(shop)
+
     def create_items(self) -> None:
-        # Give starting tools so the player can dig from the start
-        for name in ["Progressive Pickaxe", "Progressive Shovel", "Progressive Axe"]:
-            self.multiworld.push_precollected(self.create_item(name))
+        # Player starts with wooden tools - no precollected progressive items needed
+        # They unlock tool tiers via AP and purchase with fossils in the shop
         self.multiworld.itempool += build_item_pool(self)
 
     set_rules = set_rules

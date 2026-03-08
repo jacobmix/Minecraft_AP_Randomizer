@@ -132,6 +132,30 @@ class AcmeDeliveryWeight(Range):
     default = 3
 
 
+class MeteorShowerWeight(Range):
+    """Weight for Meteor Shower trap in the item pool. Set to 0 to disable."""
+    display_name = "Meteor Shower Weight"
+    range_start = 0
+    range_end = 50
+    default = 3
+
+
+class EarthquakeWeight(Range):
+    """Weight for Earthquake trap in the item pool. Set to 0 to disable."""
+    display_name = "Earthquake Weight"
+    range_start = 0
+    range_end = 50
+    default = 4
+
+
+class IncreasedGravityWeight(Range):
+    """Weight for Increased Gravity trap in the item pool. Set to 0 to disable."""
+    display_name = "Increased Gravity Weight"
+    range_start = 0
+    range_end = 50
+    default = 3
+
+
 @dataclass
 class MinecraftDigOptions(PerGameCommonOptions):
     chunk_count: ChunkCount
@@ -151,3 +175,6 @@ class MinecraftDigOptions(PerGameCommonOptions):
     wingardium_leviosa_weight: WingardiumLeviosaWeight
     about_face_weight: AboutFaceWeight
     acme_delivery_weight: AcmeDeliveryWeight
+    meteor_shower_weight: MeteorShowerWeight
+    earthquake_weight: EarthquakeWeight
+    increased_gravity_weight: IncreasedGravityWeight

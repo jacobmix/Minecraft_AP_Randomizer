@@ -73,6 +73,9 @@ def build_item_pool(mc_world: World) -> List[Item]:
         "Wingardium Leviosa": mc_world.options.wingardium_leviosa_weight.value,
         "About Face": mc_world.options.about_face_weight.value,
         "Acme Delivery": mc_world.options.acme_delivery_weight.value,
+        "Meteor Shower": mc_world.options.meteor_shower_weight.value,
+        "Earthquake": mc_world.options.earthquake_weight.value,
+        "Increased Gravity": mc_world.options.increased_gravity_weight.value,
     }
 
     # Fill remaining itempool with randomly generated junk
