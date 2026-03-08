@@ -69,7 +69,7 @@ public class ShopManager {
             0,   // Tier 0 - starting (free)
             20,  // Tier 1 - Excavation I
             50,  // Tier 2 - Excavation II
-            100  // Tier 3 - Excavation III
+            70  // Tier 3 - Excavation III
         });
         put(CATEGORY_REACH, new int[] {
             0,   // Tier 0 - starting (free)
@@ -79,7 +79,7 @@ public class ShopManager {
             0,   // Tier 0 - starting (free)
             15,  // Tier 1 - Efficiency I
             35,  // Tier 2 - Efficiency II
-            60   // Tier 3 - Efficiency III
+            50   // Tier 3 - Efficiency III
         });
     }};
 
