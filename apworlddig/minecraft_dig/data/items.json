@@ -30,7 +30,8 @@
 		"Meteor Shower",
 		"Earthquake",
 		"Explosive Bow",
-		"Increased Gravity"
+		"Increased Gravity",
+		"Progressive Shop"
 	],
 	"progression_items": [
 		"Progressive Tools",
@@ -38,7 +39,8 @@
 		"Progressive Excavation",
 		"World Barrier Expansion",
 		"Progressive Reach",
-		"Progressive Efficiency"
+		"Progressive Efficiency",
+		"Progressive Shop"
 	],
 	"useful_items": [
 		"TNT",
@@ -72,7 +74,8 @@
 		"Progressive Excavation": 3,
 		"Progressive Reach": 1,
 		"Progressive Efficiency": 3,
-		"True Golden Pick": 8
+		"True Golden Pick": 8,
+		"Progressive Shop": 3
 	},
 	"junk_weights": {
 		"TNT": 10,

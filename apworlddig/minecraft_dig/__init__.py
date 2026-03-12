@@ -121,9 +121,21 @@ class MinecraftDigWorld(World):
                                                 self.location_name_to_id.get(loc_name, None), r)
                         r.locations.append(loc)
 
-            # Add Item Shop locations to the Item Shop region
-            if region_name == "Item Shop":
-                for i in range(1, Constants.ITEM_SHOP_COUNT + 1):
+            # Add Item Shop locations to the appropriate tier region
+            if region_name == "Item Shop Tier 1":
+                for i in range(1, 10):  # Items 1-9
+                    loc_name = f"Item Shop {i}"
+                    loc = MinecraftDigLocation(self.player, loc_name,
+                                            self.location_name_to_id.get(loc_name, None), r)
+                    r.locations.append(loc)
+            elif region_name == "Item Shop Tier 2":
+                for i in range(10, 19):  # Items 10-18
+                    loc_name = f"Item Shop {i}"
+                    loc = MinecraftDigLocation(self.player, loc_name,
+                                            self.location_name_to_id.get(loc_name, None), r)
+                    r.locations.append(loc)
+            elif region_name == "Item Shop Tier 3":
+                for i in range(19, 28):  # Items 19-27
                     loc_name = f"Item Shop {i}"
                     loc = MinecraftDigLocation(self.player, loc_name,
                                             self.location_name_to_id.get(loc_name, None), r)
@@ -137,10 +149,14 @@ class MinecraftDigWorld(World):
             r = self.multiworld.get_region(region_name, self.player)
             e.connect(r)
 
-        # Connect Menu directly to Item Shop (always accessible)
+        # Connect Menu to Item Shop tiers
         menu = self.multiworld.get_region("Menu", self.player)
-        shop = self.multiworld.get_region("Item Shop", self.player)
-        menu.connect(shop)
+        shop1 = self.multiworld.get_region("Item Shop Tier 1", self.player)
+        shop2 = self.multiworld.get_region("Item Shop Tier 2", self.player)
+        shop3 = self.multiworld.get_region("Item Shop Tier 3", self.player)
+        menu.connect(shop1)
+        menu.connect(shop2)
+        menu.connect(shop3)
 
     def create_items(self) -> None:
         # Player starts with wooden tools - no precollected progressive items needed

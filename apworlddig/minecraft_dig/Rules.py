@@ -46,6 +46,14 @@ def set_rules(mc_world: World) -> None:
     for entrance_name, rule in rules_lookup["entrances"].items():
         multiworld.get_entrance(entrance_name, player).access_rule = rule
 
+    # Item Shop tier access rules (Progressive Shop unlocks rows)
+    multiworld.get_entrance("Menu -> Item Shop Tier 1", player).access_rule = \
+        lambda state: state.has("Progressive Shop", player, 1)
+    multiworld.get_entrance("Menu -> Item Shop Tier 2", player).access_rule = \
+        lambda state: state.has("Progressive Shop", player, 2)
+    multiworld.get_entrance("Menu -> Item Shop Tier 3", player).access_rule = \
+        lambda state: state.has("Progressive Shop", player, 3)
+
     # If progressive chunks is enabled, add access rules for chunk locations
     if mc_world.options.progressive_chunks.value:
         chunk_count = mc_world.options.chunk_count.value
@@ -60,7 +68,8 @@ def set_rules(mc_world: World) -> None:
                         loc.access_rule = lambda state, orig=original_rule, n=needed: \
                             orig(state) and state.has("World Barrier Expansion", player, n)
 
-    # Completion requires max tools, haste and efficiency
+    # Completion requires max tools, haste, efficiency and all shop tiers
     multiworld.completion_condition[player] = lambda state: state.has("Progressive Tools", player, 4) \
                                                             and state.has("Progressive Haste", player, 1) \
-                                                            and state.has("Progressive Efficiency", player, 3)
+                                                            and state.has("Progressive Efficiency", player, 3) \
+                                                            and state.has("Progressive Shop", player, 3)
