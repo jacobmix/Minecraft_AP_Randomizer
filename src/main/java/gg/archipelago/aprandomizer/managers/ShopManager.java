@@ -250,6 +250,19 @@ public class ShopManager {
     }
 
     /**
+     * Calculate total cost of all upgrades across all categories
+     */
+    public static int getTotalUpgradeCost() {
+        int total = 0;
+        for (int[] prices : TIER_PRICES.values()) {
+            for (int price : prices) {
+                total += price;
+            }
+        }
+        return total;
+    }
+
+    /**
      * Check if the next tier is unlocked
      */
     public static boolean isNextTierUnlocked(String category) {

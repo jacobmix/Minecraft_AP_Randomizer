@@ -55,6 +55,7 @@ public class ItemManager {
     // 50028: Earthquake (trap)
     // 50029: Explosive Bow
     // 50030: Increased Gravity (trap)
+    // 50031: Progressive Shop
     // ============================================================================
 
     // Progressive item IDs for shop unlock system (must match items.json order)
@@ -63,6 +64,7 @@ public class ItemManager {
     private static final long PROGRESSIVE_EXCAVATION_ID = 50002; // Excavation (3 tiers)
     private static final long PROGRESSIVE_REACH_ID = 50025;      // Reach (1 tier)
     private static final long PROGRESSIVE_EFFICIENCY_ID = 50026; // Efficiency (3 tiers)
+    private static final long PROGRESSIVE_SHOP_ID = 50031;      // Shop tiers (3 tiers)
 
     // Track how many of each progressive item we've received (for tier calculation)
     private int toolUnlocksReceived = 0;
@@ -70,6 +72,7 @@ public class ItemManager {
     private int excavationUnlocksReceived = 0;
     private int reachUnlocksReceived = 0;
     private int efficiencyUnlocksReceived = 0;
+    private int shopUnlocksReceived = 0;
 
     // Item stacks - explicit IDs matching items.json
     private final HashMap<Long, ItemStack> itemStacks = new HashMap<>();
@@ -229,6 +232,13 @@ public class ItemManager {
             efficiencyUnlocksReceived++;
             ShopManager.unlockTier(ShopManager.CATEGORY_EFFICIENCY, efficiencyUnlocksReceived);
             LOGGER.info("Progressive Efficiency unlock received, unlocking efficiency tier {}", efficiencyUnlocksReceived);
+        } else if (itemID == PROGRESSIVE_SHOP_ID) {
+            shopUnlocksReceived++;
+            if (APRandomizer.worldData != null) {
+                APRandomizer.worldData.setShopTierUnlocked(shopUnlocksReceived);
+            }
+            Utils.sendMessageToAll("§d[Archipelago] §eItem Shop Tier " + shopUnlocksReceived + " unlocked!");
+            LOGGER.info("Progressive Shop unlock received, unlocking shop tier {}", shopUnlocksReceived);
         }
 
         // Handle World Barrier Expansion

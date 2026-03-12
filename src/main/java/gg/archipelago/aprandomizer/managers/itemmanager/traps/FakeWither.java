@@ -36,10 +36,12 @@ public class FakeWither implements Trap {
     @Override
     public void trigger(ServerPlayer player) {
         APRandomizer.getServer().execute(() -> {
-            witherBar.addPlayer(player);
+            for (ServerPlayer p : APRandomizer.getServer().getPlayerList().getPlayers()) {
+                witherBar.addPlayer(p);
+                p.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 20 * 6, 0));
+                p.playNotifySound(SoundEvents.WITHER_SPAWN, SoundSource.MASTER, 1, 1);
+            }
             witherBar.setVisible(true);
-            player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS,20*6, 0));
-            player.playNotifySound(SoundEvents.WITHER_SPAWN, SoundSource.MASTER, 1, 1);
         });
     }
 

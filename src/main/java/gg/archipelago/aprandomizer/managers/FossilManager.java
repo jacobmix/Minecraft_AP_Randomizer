@@ -17,13 +17,17 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import gg.archipelago.aprandomizer.gui.ShopMenu;
+
 import java.util.*;
 
 public class FossilManager {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    // Fossil density: 2% chance per candidate block
-    private static final double FOSSIL_DENSITY = 0.005;
+    // Estimated solid blocks per chunk (~30000)
+    private static final int ESTIMATED_SOLID_PER_CHUNK = 30000;
+    // Margin over total shop cost (50%)
+    private static final double FOSSIL_MARGIN = 1.5;
 
     // X-ray duration in ticks (15 seconds = 300 ticks)
     private static final int XRAY_DURATION_TICKS = 300;
@@ -82,7 +86,17 @@ public class FossilManager {
             APRandomizer.worldData.setGeneratedFossils(new HashSet<>());
         }
 
-        LOGGER.info("Generating fossils for {} chunks...", chunkCount);
+        // Calculate total cost: all upgrades + item shop
+        int totalCost = ShopManager.getTotalUpgradeCost() + (ShopMenu.ITEM_SHOP_COUNT * ShopMenu.ITEM_SHOP_COST);
+        int targetFossils = (int) (totalCost * FOSSIL_MARGIN);
+
+        // Calculate density dynamically: target fossils / total estimated solid blocks
+        double fossilDensity = (double) targetFossils / ((long) ESTIMATED_SOLID_PER_CHUNK * chunkCount);
+        // Clamp to reasonable range
+        fossilDensity = Math.max(0.001, Math.min(0.1, fossilDensity));
+
+        LOGGER.info("Fossil balancing: totalCost={}, targetFossils={}, density={}, chunkCount={}",
+            totalCost, targetFossils, String.format("%.4f", fossilDensity), chunkCount);
 
         int side = (int) Math.ceil(Math.sqrt(chunkCount));
         int fossilCount = 0;
@@ -145,7 +159,7 @@ public class FossilManager {
                         Random posRng = new Random(posHash);
 
                         // Check if this position should be a fossil
-                        if (posRng.nextDouble() < FOSSIL_DENSITY) {
+                        if (posRng.nextDouble() < fossilDensity) {
                             APRandomizer.worldData.addGeneratedFossil(pos.asLong());
                             fossilCount++;
                             chunkFossils++;
@@ -429,6 +443,50 @@ public class FossilManager {
         }
         activeXrayShulkers.clear();
         xrayEndTick = 0;
+    }
+
+    /**
+     * Periodically check for fossils in blocks destroyed by non-standard means
+     * (fire, pistons, water, etc.) and auto-collect them.
+     * Called every server tick, internally throttled to once per second.
+     */
+    private static int lastOrphanCheckTick = 0;
+    public static void tickOrphanFossilCheck() {
+        if (APRandomizer.worldData == null) return;
+        if (APRandomizer.getServer() == null) return;
+
+        int currentTick = APRandomizer.getServer().getTickCount();
+        if (currentTick - lastOrphanCheckTick < 20) return;
+        lastOrphanCheckTick = currentTick;
+
+        ServerLevel level = APRandomizer.getServer().overworld();
+        List<ServerPlayer> players = APRandomizer.getServer().getPlayerList().getPlayers();
+        if (players.isEmpty()) return;
+
+        for (ServerPlayer player : players) {
+            BlockPos playerPos = player.blockPosition();
+            for (Long posLong : APRandomizer.worldData.getGeneratedFossils()) {
+                if (APRandomizer.worldData.isFossilCollected(posLong)) continue;
+
+                BlockPos fossilPos = BlockPos.of(posLong);
+                if (Math.abs(fossilPos.getX() - playerPos.getX()) > 32 ||
+                    Math.abs(fossilPos.getY() - playerPos.getY()) > 32 ||
+                    Math.abs(fossilPos.getZ() - playerPos.getZ()) > 32) continue;
+
+                if (level.getBlockState(fossilPos).isAir()) {
+                    removeXrayShulkerAt(posLong);
+                    APRandomizer.worldData.markFossilCollected(posLong);
+                    APRandomizer.worldData.addFossils(1);
+                    int newBalance = APRandomizer.worldData.getFossilBalance();
+
+                    level.sendParticles(ParticleTypes.HAPPY_VILLAGER,
+                        fossilPos.getX() + 0.5, fossilPos.getY() + 0.5, fossilPos.getZ() + 0.5,
+                        20, 0.5, 0.5, 0.5, 0.1);
+
+                    Utils.sendMessageToAll("§a" + player.getName().getString() + " found a fossil! §7Balance: §e" + newBalance);
+                }
+            }
+        }
     }
 
     /**

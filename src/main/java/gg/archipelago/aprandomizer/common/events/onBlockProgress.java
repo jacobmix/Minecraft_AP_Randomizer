@@ -106,8 +106,10 @@ public class onBlockProgress {
                     // Send crack animation to all players
                     BlockProgressManager.sendCrackAnimation(level, currentMiningPos, currentProgress);
 
-                    // Also add progress to excavation target blocks
-                    Set<BlockPos> excavationTargets = ExcavationPower.getExcavationTargets(currentMiningPos, serverPlayer, level);
+                    // Also add progress to excavation target blocks (skip if using True Golden Pick)
+                    boolean isTruePick = serverPlayer.getMainHandItem().getOrCreateTag().getBoolean("truepick");
+                    Set<BlockPos> excavationTargets = isTruePick ?
+                        Set.of() : ExcavationPower.getExcavationTargets(currentMiningPos, serverPlayer, level);
                     for (BlockPos excavatePos : excavationTargets) {
                         BlockState excavateState = level.getBlockState(excavatePos);
                         if (!excavateState.isAir()) {

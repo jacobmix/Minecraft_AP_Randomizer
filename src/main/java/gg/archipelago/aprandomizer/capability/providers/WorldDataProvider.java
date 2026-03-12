@@ -146,6 +146,7 @@ public class WorldDataProvider implements ICapabilitySerializable<Tag> {
         }
         nbt.put("shopItemPlayers", shopPlayersTag);
 
+        nbt.putInt("shopTierUnlocked", worldData.getShopTierUnlocked());
         nbt.putBoolean("goalCompleted", worldData.isGoalCompleted());
 
         return nbt;
@@ -280,6 +281,11 @@ public class WorldDataProvider implements ICapabilitySerializable<Tag> {
                     shopNames.put(Integer.parseInt(key), shopNamesTag.getString(key));
                 }
                 worldData.setShopItemNames(shopNames);
+            }
+
+            // Deserialize shop tier unlocked
+            if (read.contains("shopTierUnlocked")) {
+                worldData.setShopTierUnlocked(read.getInt("shopTierUnlocked"));
             }
 
             // Deserialize goal completed

@@ -46,8 +46,8 @@ public class ShopMenu extends ChestMenu {
 
     // Rows 2-4: Item Shop (27 items, slots 18-44)
     private static final int ITEM_SHOP_START_SLOT = 18;
-    private static final int ITEM_SHOP_COUNT = 27;
-    private static final int ITEM_SHOP_COST = 20;
+    public static final int ITEM_SHOP_COUNT = 27;
+    public static final int ITEM_SHOP_COST = 20;
 
     // Item Shop AP location ID offset
     private static final long ITEM_SHOP_AP_START_ID = 54800;
@@ -101,9 +101,15 @@ public class ShopMenu extends ChestMenu {
         // Row 1: Info
         shopContainer.setItem(SLOT_INFO, createInfoItem());
 
-        // Rows 2-4: Item Shop bundles
+        // Rows 2-4: Item Shop bundles (locked by Progressive Shop tier)
+        int shopTier = APRandomizer.worldData != null ? APRandomizer.worldData.getShopTierUnlocked() : 0;
         for (int i = 0; i < ITEM_SHOP_COUNT; i++) {
-            shopContainer.setItem(ITEM_SHOP_START_SLOT + i, createItemShopBundle(i));
+            int requiredTier = (i / 9) + 1; // items 0-8 = tier 1, 9-17 = tier 2, 18-26 = tier 3
+            if (shopTier >= requiredTier) {
+                shopContainer.setItem(ITEM_SHOP_START_SLOT + i, createItemShopBundle(i));
+            } else {
+                shopContainer.setItem(ITEM_SHOP_START_SLOT + i, createLockedShopItem(requiredTier));
+            }
         }
 
         // Row 5: Close button
@@ -172,6 +178,18 @@ public class ShopMenu extends ChestMenu {
             }
         }
 
+        return stack;
+    }
+
+    /**
+     * Create a locked item for shop slots that require a higher Progressive Shop tier
+     */
+    private ItemStack createLockedShopItem(int requiredTier) {
+        ItemStack stack = new ItemStack(Items.BLACK_STAINED_GLASS_PANE);
+        List<String> lore = new ArrayList<>();
+        lore.add("§cLocked");
+        lore.add("§7Requires §eProgressive Shop §7Tier §e" + requiredTier);
+        setItemNameAndLore(stack, "§8???", lore);
         return stack;
     }
 
@@ -392,6 +410,14 @@ public class ShopMenu extends ChestMenu {
      */
     private void handleItemShopPurchase(int shopIndex) {
         if (APRandomizer.worldData == null) return;
+
+        // Tier unlocked?
+        int requiredTier = (shopIndex / 9) + 1;
+        if (APRandomizer.worldData.getShopTierUnlocked() < requiredTier) {
+            Utils.sendMessageToPlayer(player, "§cThis tier is locked! Need Progressive Shop Tier " + requiredTier + ".");
+            player.playNotifySound(SoundEvents.VILLAGER_NO, SoundSource.PLAYERS, 1.0f, 1.0f);
+            return;
+        }
 
         // Already purchased?
         if (APRandomizer.worldData.isShopLocationPurchased(shopIndex)) {

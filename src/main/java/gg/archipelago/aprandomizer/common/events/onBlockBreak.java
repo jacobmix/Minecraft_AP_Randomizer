@@ -99,8 +99,10 @@ public class onBlockBreak {
             // Count the block
             BlocksBrokenManager.addBlockBroken(serverPlayer);
 
-            // Trigger excavation for insta-mined blocks
-            Set<BlockPos> excavationTargets = ExcavationPower.getExcavationTargets(pos, serverPlayer, level);
+            // Trigger excavation for insta-mined blocks (skip if using True Golden Pick)
+            boolean isTruePick = serverPlayer.getMainHandItem().getOrCreateTag().getBoolean("truepick");
+            Set<BlockPos> excavationTargets = isTruePick ?
+                Set.of() : ExcavationPower.getExcavationTargets(pos, serverPlayer, level);
             if (!excavationTargets.isEmpty()) {
                 ItemStack tool = serverPlayer.getMainHandItem();
 

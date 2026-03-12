@@ -72,11 +72,7 @@ public class onExplosiveBow {
                 // Mark this arrow as explosive
                 explosiveArrows.add(arrow.getUUID());
                 arrowShooters.put(arrow.getUUID(), player.getUUID());
-
-                // Damage the bow (reduce durability by 1)
-                bow.hurtAndBreak(1, player, (p) -> {
-                    p.broadcastBreakEvent(player.getUsedItemHand());
-                });
+                // Durability is already handled by vanilla BowItem.releaseUsing()
             }
         }
     }

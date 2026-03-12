@@ -19,6 +19,9 @@ public class onServerTick {
         // Tick X-ray sessions
         FossilManager.tickXraySessions();
 
+        // Check for fossils destroyed by fire, pistons, etc.
+        FossilManager.tickOrphanFossilCheck();
+
         if(APRandomizer.isJailPlayers())
             return;
 

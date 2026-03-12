@@ -47,6 +47,9 @@ public class WorldData {
     // Item Shop: cached player names from scouting (index -> player name)
     private Map<Integer, String> shopItemPlayers = new HashMap<>();
 
+    // Shop tier unlocked (0 = none, 1 = row 1, 2 = row 1+2, 3 = all rows)
+    private int shopTierUnlocked = 0;
+
     // Goal completion flag - stops receiving AP items after goal + release
     private boolean goalCompleted = false;
 
@@ -333,6 +336,15 @@ public class WorldData {
 
     public String getShopItemPlayer(int index) {
         return this.shopItemPlayers.getOrDefault(index, "");
+    }
+
+    // Shop tier methods
+    public int getShopTierUnlocked() {
+        return shopTierUnlocked;
+    }
+
+    public void setShopTierUnlocked(int tier) {
+        this.shopTierUnlocked = Math.max(this.shopTierUnlocked, tier);
     }
 
     // Goal completion methods
