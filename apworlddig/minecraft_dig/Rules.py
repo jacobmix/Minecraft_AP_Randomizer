@@ -68,8 +68,7 @@ def set_rules(mc_world: World) -> None:
                         loc.access_rule = lambda state, orig=original_rule, n=needed: \
                             orig(state) and state.has("World Barrier Expansion", player, n)
 
-    # Completion requires max tools, haste, efficiency and all shop tiers
+    # Completion requires max tools, haste and efficiency
     multiworld.completion_condition[player] = lambda state: state.has("Progressive Tools", player, 4) \
                                                             and state.has("Progressive Haste", player, 1) \
-                                                            and state.has("Progressive Efficiency", player, 3) \
-                                                            and state.has("Progressive Shop", player, 3)
+                                                            and state.has("Progressive Efficiency", player, 3)
