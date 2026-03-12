@@ -7,7 +7,8 @@ from worlds.AutoWorld import World
 from . import Constants
 
 
-def get_junk_item_names(rand, k: int, trap_weights: dict) -> List[str]:
+def get_junk_item_names(rand, k: int, trap_weights: dict | None = None) -> List[str]:
+    if trap_weights is None: trap_weights = {}
     # Start with base junk weights (non-trap items)
     junk_weights = {}
     trap_items = set(Constants.item_info["trap_items"])
