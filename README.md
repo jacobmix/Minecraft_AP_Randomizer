@@ -77,7 +77,7 @@ Firewall/port:
 > - Allow Forge Server through firewall  
 >   - Open: ``control.exe`` (Searching in Windows)  
 >   - ``Control Panel\All Control Panel Items\Windows Defender Firewall\Allowed apps``>``Change Settings (Admin)``>``Allow another app``>``Browse``>``Forge-x.jar`` >``Add``>``Allow apps``  
-> - PortForward [mod](<https://modrinth.com/mod/dedicatedmcupnp/version/uru0Bn9t>) + [Architectury API](<https://modrinth.com/mod/architectury-api/version/11.1.17+minecraftforge>) (or [e4mc](<https://modrinth.com/mod/e4mc/version/5.3.1-forge>)). Place in ``mods`` folder of Forge server. Or try [this](<https://gist.github.com/jacobmix/ed6a0dcf3188f4843e414099fdd63cc4>). 
+> - PortForward [mod](<https://modrinth.com/mod/dedicatedmcupnp/versions?g=1.19.4&g=1.20.4&l=forge>) + [Architectury API](<https://modrinth.com/mod/architectury-api/versions?g=1.19.4&g=1.20.4&l=forge>) (or [e4mc](<https://modrinth.com/mod/e4mc/versions?g=1.19.4&g=1.20.4&l=forge>)). Place in ``mods`` folder of Forge server. Or try [this](<https://gist.github.com/jacobmix/ed6a0dcf3188f4843e414099fdd63cc4>). 
 
 If Microsoft's Minecraft authentication servers are down you can set ``online-mode`` to ``false`` in ``server.properties``.
 
