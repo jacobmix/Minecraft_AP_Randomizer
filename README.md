@@ -1,6 +1,7 @@
 # Instructions:
 0. Recommend installing latest stable [Archipelago](<https://github.com/ArchipelagoMW/Archipelago/releases/latest>) with **"clean libs" ticked on**. (Also try if client won't open or see ``no attribute 'mc_launch'``)
-1. Install the [minecraft.apworld](https://github.com/jacobmix/Minecraft_AP_Randomizer/releases?q=main) or [minecraft_dig.apworld](https://github.com/jacobmix/Minecraft_AP_Randomizer/releases?q=dig). (double click it after downloading), and wait for the installed popup.<br/> Then **FULLY RESTART ARCHIPELAGO**, and 'Generate Template Options' in the launcher.  
+1. Install the ~~[minecraft.apworld](https://github.com/jacobmix/Minecraft_AP_Randomizer/releases?q=main)~~ or [minecraft_dig.apworld](https://github.com/jacobmix/Minecraft_AP_Randomizer/releases?q=dig). (double click it after downloading), and wait for the installed popup.<br/> Then **FULLY RESTART ARCHIPELAGO**, and 'Generate Template Options' in the launcher.  
+**Note: Minecraft has been rewritten for NeoForge, and can now be found [here](<https://github.com/qixils/NeoForgeAP/releases/latest>). Dig has not changed as of yet.**
 2. Use 'Option Creator' in the launcher to create your Minecraft player yaml (or edit it manually with a text editor like [Notepad++](<https://notepad-plus-plus.org/downloads/>))
    - Give yaml to host or put yaml(s) in the ``Players`` folder, and press "Generate" to get a multiworld ``.zip`` in the ``output`` folder<br/>
    (Terminal window will close if gen successful)
