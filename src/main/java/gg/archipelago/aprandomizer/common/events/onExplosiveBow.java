@@ -34,12 +34,17 @@ public class onExplosiveBow {
     private static final Set<UUID> explosiveArrows = new HashSet<>();
     // Track which player shot each explosive arrow (arrow UUID -> shooter UUID)
     private static final Map<UUID, UUID> arrowShooters = new HashMap<>();
+    // Players who nocked an explosive bow (tracked before shot to avoid last-shot break issue)
+    private static final Set<UUID> pendingExplosiveShot = new HashSet<>();
 
     @SubscribeEvent
     public static void onArrowNock(ArrowNockEvent event) {
         // Allow explosive bow to be used without arrows in inventory
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if (!isExplosiveBow(event.getBow())) return;
+
+        // Track that this player is about to fire an explosive arrow
+        pendingExplosiveShot.add(player.getUUID());
 
         // Give a temporary arrow if they have none (Infinity needs at least 1)
         boolean hadArrow = player.getInventory().contains(new ItemStack(Items.ARROW));
@@ -58,21 +63,9 @@ public class onExplosiveBow {
         if (event.getLevel().isClientSide()) return;
 
         if (arrow.getOwner() instanceof ServerPlayer player) {
-            ItemStack mainHand = player.getMainHandItem();
-            ItemStack offHand = player.getOffhandItem();
-
-            ItemStack bow = null;
-            if (isExplosiveBow(mainHand)) {
-                bow = mainHand;
-            } else if (isExplosiveBow(offHand)) {
-                bow = offHand;
-            }
-
-            if (bow != null) {
-                // Mark this arrow as explosive
+            if (pendingExplosiveShot.remove(player.getUUID())) {
                 explosiveArrows.add(arrow.getUUID());
                 arrowShooters.put(arrow.getUUID(), player.getUUID());
-                // Durability is already handled by vanilla BowItem.releaseUsing()
             }
         }
     }
