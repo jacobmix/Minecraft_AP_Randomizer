@@ -55,6 +55,26 @@ public class ConnectResult {
                 } else {
                     // Reconnecting after crash/restart - just set playing state
                     APRandomizer.getAP().setGameState(ClientStatus.CLIENT_PLAYING);
+
+                    // Restore world border
+                    int numChunks;
+                    if (APRandomizer.isProgressiveChunks()) {
+                        numChunks = APRandomizer.getUnlockedChunks();
+                    } else {
+                        numChunks = APRandomizer.getMaxChunks();
+                    }
+                    int side = (int) Math.ceil(Math.sqrt(numChunks));
+                    double centerCoord = side * 8.0 - 1.0;
+                    double borderSize = side * 16.0 + 8.0;
+
+                    WorldBorder border = APRandomizer.getServer().overworld().getWorldBorder();
+                    border.setCenter(centerCoord, centerCoord);
+                    border.setSize(borderSize);
+                    border.setWarningBlocks(0);
+                    border.setWarningTime(0);
+                    border.setDamageSafeZone(0);
+                    border.setDamagePerBlock(Double.MAX_VALUE);
+
                     Utils.sendMessageToAll("Reconnected! Game resuming...");
                 }
                 APRandomizer.getGoalManager().updateInfoBar();
