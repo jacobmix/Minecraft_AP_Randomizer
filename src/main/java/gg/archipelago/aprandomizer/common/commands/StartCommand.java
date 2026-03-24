@@ -78,10 +78,6 @@ public class StartCommand {
         border.setDamageSafeZone(0);
         border.setDamagePerBlock(Double.MAX_VALUE);
 
-        ItemStack scaffolding = new ItemStack(Items.SCAFFOLDING, 64);
-        scaffolding.getOrCreateTag().putString("key", "scaffolding");
-        ItemManager.updateItem(scaffolding, "scaffolding");
-
         APRandomizer.getServer().execute(() -> {
             for (ServerPlayer player : APRandomizer.getServer().getPlayerList().getPlayers()) {
                 CustomAdvancementHandler.grantAdvancement(player, new ResourceLocation(APRandomizer.MODID, "archipelago/root"));

@@ -603,11 +603,16 @@ public class ItemManager {
         loreTag.add(StringTag.valueOf(Component.Serializer.toJson(Component.literal("§7Buy upgrades with fossils!"))));
         display.put("Lore", loreTag);
 
+        // Create scaffolding
+        ItemStack scaffolding = new ItemStack(Items.SCAFFOLDING, 64);
+        scaffolding.getOrCreateTag().putString("key", "scaffolding");
+
         // Register as permanent items
         permanentItems.put("pick", pick);
         permanentItems.put("shovel", shovel);
         permanentItems.put("axe", axe);
         permanentItems.put("shop", shopItem);
+        permanentItems.put("scaffolding", scaffolding);
 
         LOGGER.info("Starting tools registered as permanent items");
     }
