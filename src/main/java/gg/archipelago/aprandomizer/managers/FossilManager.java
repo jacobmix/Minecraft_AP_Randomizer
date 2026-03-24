@@ -24,8 +24,6 @@ import java.util.*;
 public class FossilManager {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    // Estimated solid blocks per chunk (~30000)
-    private static final int ESTIMATED_SOLID_PER_CHUNK = 30000;
     // Margin over total shop cost (50%)
     private static final double FOSSIL_MARGIN = 1.5;
 
@@ -49,27 +47,35 @@ public class FossilManager {
         LOGGER.info("FossilManager initialized with seed: {}", seed);
     }
 
-    /**
-     * Generate fossils in the world. This should be called once after world generation.
-     * Only places fossils where solid blocks exist.
-     * @param level The server level
-     * @param chunkCount Number of chunks in the world
-     */
+    // Async generation state
+    private static boolean isGenerating = false;
+    private static int genNextChunk = 0;
+    private static int genTotalChunks = 0;
+    private static int genSide = 0;
+    private static int genFossilsPerChunk = 0;
+    private static int genFossilsRemainder = 0;
+    private static ServerLevel genLevel = null;
+    private static int genTotalFossils = 0;
+
     public static void generateFossils(ServerLevel level, int chunkCount) {
         generateFossils(level, chunkCount, false);
     }
 
     /**
-     * Generate fossils with option to force regeneration
+     * Generate fossils with option to force regeneration.
+     * Schedules async generation: one chunk per tick to avoid server hang.
+     * Each chunk gets exactly (targetFossils / chunkCount) fossils, placed on random solid blocks.
      */
     public static void generateFossils(ServerLevel level, int chunkCount, boolean force) {
         LOGGER.info("=== FOSSIL GENERATION START ===");
-        LOGGER.info("worldData null? {}", APRandomizer.worldData == null);
-        LOGGER.info("worldSeed: {}", worldSeed);
-        LOGGER.info("chunkCount: {}", chunkCount);
 
         if (APRandomizer.worldData == null) {
             LOGGER.error("Cannot generate fossils: worldData is null");
+            return;
+        }
+
+        if (isGenerating) {
+            LOGGER.warn("Fossil generation already in progress, ignoring");
             return;
         }
 
@@ -90,96 +96,91 @@ public class FossilManager {
         int totalCost = ShopManager.getTotalUpgradeCost() + (ShopMenu.ITEM_SHOP_COUNT * ShopMenu.ITEM_SHOP_COST);
         int targetFossils = (int) (totalCost * FOSSIL_MARGIN);
 
-        // Calculate density dynamically: target fossils / total estimated solid blocks
-        double fossilDensity = (double) targetFossils / ((long) ESTIMATED_SOLID_PER_CHUNK * chunkCount);
-        // Clamp to reasonable range
-        fossilDensity = Math.max(0.001, Math.min(0.1, fossilDensity));
+        LOGGER.info("Fossil balancing: totalCost={}, targetFossils={}, chunkCount={}",
+            totalCost, targetFossils, chunkCount);
 
-        LOGGER.info("Fossil balancing: totalCost={}, targetFossils={}, density={}, chunkCount={}",
-            totalCost, targetFossils, String.format("%.4f", fossilDensity), chunkCount);
+        // Set up async state
+        genLevel = level;
+        genTotalChunks = chunkCount;
+        genSide = (int) Math.ceil(Math.sqrt(chunkCount));
+        genFossilsPerChunk = targetFossils / chunkCount;
+        genFossilsRemainder = targetFossils % chunkCount;
+        genNextChunk = 0;
+        genTotalFossils = 0;
+        isGenerating = true;
 
-        int side = (int) Math.ceil(Math.sqrt(chunkCount));
-        int fossilCount = 0;
-        int solidBlocks = 0;
-        int airBlocks = 0;
-        int bedrockBlocks = 0;
+        Utils.sendMessageToAll("§7Generating fossils... (0/" + chunkCount + " chunks)");
+    }
 
-        LOGGER.info("Grid side: {}", side);
+    /**
+     * Called every server tick. Processes one chunk per tick during generation.
+     * Counts solid blocks, then picks exactly the right number as fossils.
+     */
+    public static void tickGeneration() {
+        if (!isGenerating || genLevel == null) return;
 
-        // Scan all chunks and Y levels
-        for (int chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
-            int cx = chunkIndex % side;
-            int cz = chunkIndex / side;
-            int baseX = cx * 16;
-            int baseZ = cz * 16;
+        int chunkIndex = genNextChunk;
+        int cx = chunkIndex % genSide;
+        int cz = chunkIndex / genSide;
+        int baseX = cx * 16;
+        int baseZ = cz * 16;
 
-            LOGGER.info("Processing chunk {} at cx={}, cz={}, baseX={}, baseZ={}",
-                chunkIndex, cx, cz, baseX, baseZ);
-
-            // Force load the chunk to ensure blocks are accessible
-            net.minecraft.world.level.chunk.LevelChunk chunk = level.getChunk(cx, cz);
-            if (chunk == null) {
-                LOGGER.warn("Chunk {},{} is null, skipping", cx, cz);
-                continue;
-            }
-
-            int chunkSolid = 0;
-            int chunkFossils = 0;
-
-            // Scan each block in the chunk
+        net.minecraft.world.level.chunk.LevelChunk chunk = genLevel.getChunk(cx, cz);
+        if (chunk == null) {
+            LOGGER.warn("Chunk {},{} is null, skipping", cx, cz);
+        } else {
+            // Collect all solid block positions in this chunk
+            List<Long> solidPositions = new ArrayList<>();
             for (int x = 0; x < 16; x++) {
                 for (int z = 0; z < 16; z++) {
                     for (int y = -63; y <= 128; y++) {
                         BlockPos pos = new BlockPos(baseX + x, y, baseZ + z);
-                        BlockState blockState = level.getBlockState(pos);
+                        BlockState blockState = genLevel.getBlockState(pos);
 
-                        // Skip air
-                        if (blockState.isAir()) {
-                            airBlocks++;
-                            continue;
-                        }
+                        if (blockState.isAir()) continue;
+                        if (blockState.is(Blocks.BEDROCK)) continue;
+                        if (!blockState.isCollisionShapeFullBlock(genLevel, pos)) continue;
 
-                        // Skip bedrock
-                        if (blockState.is(Blocks.BEDROCK)) {
-                            bedrockBlocks++;
-                            continue;
-                        }
-
-                        // Skip non-full blocks (stairs, fences, slabs, vines, etc.)
-                        if (!blockState.isCollisionShapeFullBlock(level, pos)) {
-                            continue;
-                        }
-
-                        solidBlocks++;
-                        chunkSolid++;
-
-                        // Use deterministic random based on position
-                        long posHash = (worldSeed ^ (pos.getX() * 73856093L) ^
-                                       (pos.getY() * 19349663L) ^ (pos.getZ() * 83492791L));
-                        Random posRng = new Random(posHash);
-
-                        // Check if this position should be a fossil
-                        if (posRng.nextDouble() < fossilDensity) {
-                            APRandomizer.worldData.addGeneratedFossil(pos.asLong());
-                            fossilCount++;
-                            chunkFossils++;
-                        }
+                        solidPositions.add(pos.asLong());
                     }
                 }
             }
 
-            LOGGER.info("Chunk {} done: {} solid blocks, {} fossils", chunkIndex, chunkSolid, chunkFossils);
+            // How many fossils for this chunk (distribute remainder to first chunks)
+            int fossilsForChunk = genFossilsPerChunk + (chunkIndex < genFossilsRemainder ? 1 : 0);
+            fossilsForChunk = Math.min(fossilsForChunk, solidPositions.size());
+
+            // Deterministic shuffle based on seed + chunk index, then pick first N
+            Random chunkRng = new Random(worldSeed ^ (chunkIndex * 48611L));
+            Collections.shuffle(solidPositions, chunkRng);
+
+            for (int i = 0; i < fossilsForChunk; i++) {
+                APRandomizer.worldData.addGeneratedFossil(solidPositions.get(i));
+            }
+
+            genTotalFossils += fossilsForChunk;
+            LOGGER.info("Chunk {}/{} done: {} solid blocks, {} fossils placed",
+                chunkIndex + 1, genTotalChunks, solidPositions.size(), fossilsForChunk);
         }
 
-        LOGGER.info("=== FOSSIL GENERATION COMPLETE ===");
-        LOGGER.info("Total: {} air, {} bedrock, {} solid blocks, {} fossils",
-            airBlocks, bedrockBlocks, solidBlocks, fossilCount);
-        LOGGER.info("Fossils in worldData: {}", APRandomizer.worldData.getGeneratedFossils().size());
+        genNextChunk++;
+        if (genNextChunk >= genTotalChunks) {
+            // Generation complete
+            isGenerating = false;
+            genLevel = null;
+            LOGGER.info("=== FOSSIL GENERATION COMPLETE === Total fossils: {}", genTotalFossils);
+            Utils.sendMessageToAll("§aFossil generation complete! §7" + genTotalFossils + " fossils placed.");
+            APRandomizer.getServer().execute(() -> {
+                APRandomizer.getServer().saveEverything(true, true, true);
+            });
+        }
+    }
 
-        // Save the world data
-        APRandomizer.getServer().execute(() -> {
-            APRandomizer.getServer().saveEverything(true, true, true);
-        });
+    /**
+     * Check if fossil generation is currently in progress
+     */
+    public static boolean isGenerating() {
+        return isGenerating;
     }
 
     /**

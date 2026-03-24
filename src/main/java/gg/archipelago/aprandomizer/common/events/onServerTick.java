@@ -19,6 +19,9 @@ public class onServerTick {
         // Tick X-ray sessions
         FossilManager.tickXraySessions();
 
+        // Tick async fossil generation (one chunk per tick)
+        FossilManager.tickGeneration();
+
         // Check for fossils destroyed by fire, pistons, etc.
         FossilManager.tickOrphanFossilCheck();
 
