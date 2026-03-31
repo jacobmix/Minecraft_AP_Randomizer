@@ -4,6 +4,7 @@ import gg.archipelago.aprandomizer.APRandomizer;
 import gg.archipelago.aprandomizer.common.Utils.Utils;
 import gg.archipelago.aprandomizer.managers.FossilManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -31,9 +32,9 @@ public class onServerTick {
         // Check for players at Y=-100 or below (every tick for responsiveness)
         for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
             if (player.getY() <= -100) {
-                // Teleport to spawn platform (always accessible)
-                // This prevents softlock when falling into unlocked chunk areas
-                player.teleportTo(-3.0, 130.0, -3.0);
+                // Teleport to spawn platform — use full teleportTo to avoid safe-position search
+                ServerLevel level = player.getLevel();
+                player.teleportTo(level, -2.5, 129.0, -2.5, player.getYRot(), player.getXRot());
             }
         }
 
