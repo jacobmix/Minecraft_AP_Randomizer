@@ -32,8 +32,6 @@ public class onBlockBreak {
     static void onExplosionEvent(ExplosionEvent.Detonate event) {
         for (BlockPos affectedBlock : event.getAffectedBlocks()) {
             APRandomizer.getLayerManager().addLayerCheck(affectedBlock.getY());
-            // Remove any X-ray shulker at this position
-            FossilManager.removeXrayShulkerAt(affectedBlock);
             // Check for fossils in exploded blocks
             FossilManager.checkAndCollectFossil(affectedBlock, null);
         }
@@ -48,9 +46,6 @@ public class onBlockBreak {
 
         BlockPos pos = event.getPos();
         ServerPlayer player = (ServerPlayer) event.getPlayer();
-
-        // Always remove any X-ray shulker at this position first
-        FossilManager.removeXrayShulkerAt(pos);
 
         // Check for fossils in the broken block
         FossilManager.checkAndCollectFossil(pos, player);
@@ -77,7 +72,6 @@ public class onBlockBreak {
                 for (int z = oz; z < oz + 16; z++) {
                     BlockPos blockPos = new BlockPos(x, layer, z);
                     // Check for fossils before breaking
-                    FossilManager.removeXrayShulkerAt(blockPos);
                     FossilManager.checkAndCollectFossil(blockPos, player);
                     event.getLevel().destroyBlock(blockPos, true);
                 }

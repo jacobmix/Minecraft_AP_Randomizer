@@ -33,19 +33,17 @@ public class FossilManager {
     // World seed for deterministic fossil generation
     private static long worldSeed = 0;
 
-    // Active X-ray shulkers mapped by their BlockPos (for removal when block is mined)
-    private static final Map<Long, Shulker> activeXrayShulkers = new HashMap<>();
 
-    // End tick for current X-ray session
-    private static int xrayEndTick = 0;
 
     /**
      * Initialize the FossilManager with the world seed
      */
     public static void initialize(long seed) {
         worldSeed = seed;
+        pendingXray = false;
         LOGGER.info("FossilManager initialized with seed: {}", seed);
     }
+
 
     // Async generation state
     private static boolean isGenerating = false;
@@ -173,6 +171,13 @@ public class FossilManager {
             APRandomizer.getServer().execute(() -> {
                 APRandomizer.getServer().saveEverything(true, true, true);
             });
+
+            // Activate pending X-ray if one was deferred
+            if (pendingXray) {
+                pendingXray = false;
+                LOGGER.info("Activating deferred Fossil X-ray");
+                doActivateFossilXray();
+            }
         }
     }
 
@@ -214,7 +219,7 @@ public class FossilManager {
 
     /**
      * Check if a block contains a fossil and collect it if so.
-     * Note: X-ray shulker removal should be done by the caller (onBlockBreak) before calling this.
+     * Also kills any X-ray shulker at that position.
      * @param pos The block position
      * @param player The player who broke the block (can be null for explosions)
      * @return true if a fossil was collected
@@ -229,6 +234,9 @@ public class FossilManager {
 
         // Check if already collected
         if (APRandomizer.worldData.isFossilCollected(posLong)) return false;
+
+        // Kill any X-ray shulker at this position
+        killShulkersAt(pos);
 
         // Mark as collected
         APRandomizer.worldData.markFossilCollected(posLong);
@@ -263,43 +271,84 @@ public class FossilManager {
         return true;
     }
 
+    // Pending X-ray activation (deferred until generation completes)
+    private static boolean pendingXray = false;
+
     /**
      * Activate Fossil X-ray for ALL online players.
-     * Called when receiving the item from Archipelago.
-     * Spawns glowing invisible shulkers at fossil positions.
+     * Called when receiving the item from Archipelago (possibly from AP websocket thread).
+     * Delegates to server thread to avoid ConcurrentModificationException.
      */
     public static void activateFossilXrayForAll() {
-        ServerLevel level = APRandomizer.getServer().overworld();
-        int currentTick = APRandomizer.getServer().getTickCount();
+        if (APRandomizer.getServer() == null) {
+            LOGGER.warn("Cannot activate Fossil X-ray: server is null");
+            return;
+        }
 
-        boolean isExtension = !activeXrayShulkers.isEmpty() && currentTick <= xrayEndTick;
+        // Always execute on the server thread to avoid CME from AP websocket thread
+        APRandomizer.getServer().execute(FossilManager::doActivateFossilXray);
+    }
+
+    /**
+     * Internal X-ray activation — MUST run on server thread.
+     */
+    private static void doActivateFossilXray() {
+        if (APRandomizer.getServer() == null || APRandomizer.worldData == null) {
+            LOGGER.warn("Cannot activate Fossil X-ray: server or worldData is null");
+            return;
+        }
+
+        // If fossils are still being generated, defer until generation completes
+        if (isGenerating) {
+            pendingXray = true;
+            Utils.sendMessageToAll("§d[Archipelago] §eFossil X-ray received! §7Will activate when fossil generation completes...");
+            LOGGER.info("Fossil X-ray deferred: generation in progress");
+            return;
+        }
+
+        // If no fossils have been generated at all, defer
+        if (!APRandomizer.worldData.areFossilsGenerated() ||
+            APRandomizer.worldData.getGeneratedFossils().isEmpty()) {
+            pendingXray = true;
+            Utils.sendMessageToAll("§d[Archipelago] §eFossil X-ray received! §7Will activate when fossils are generated...");
+            LOGGER.info("Fossil X-ray deferred: no fossils generated yet");
+            return;
+        }
+
+        ServerLevel level = APRandomizer.getServer().overworld();
+
+        // Check if there are existing xray shulkers in the world (extension vs fresh)
+        boolean isExtension = hasXrayShulkersInWorld(level);
 
         if (isExtension) {
-            // Extend existing X-ray duration
-            xrayEndTick += XRAY_DURATION_TICKS;
-            int remainingSeconds = (xrayEndTick - currentTick) / 20;
-
-            // Extend invisibility on existing shulkers
-            for (Shulker shulker : activeXrayShulkers.values()) {
-                if (!shulker.isRemoved()) {
-                    shulker.addEffect(new MobEffectInstance(
-                        MobEffects.INVISIBILITY,
-                        xrayEndTick - currentTick + 20,
-                        0, true, false
-                    ));
+            // Find fossil positions in range of players
+            Set<Long> inRangePositions = new HashSet<>();
+            for (ServerPlayer player : APRandomizer.getServer().getPlayerList().getPlayers()) {
+                for (BlockPos pos : findFossilsNearPlayer(player, level)) {
+                    inRangePositions.add(pos.asLong());
                 }
             }
 
-            // Also spawn shulkers for any new fossils in range
+            // Extend deadline only on shulkers at in-range fossil positions
+            int extended = 0;
+            for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+                if (!(entity instanceof Shulker shulker)) continue;
+                if (!shulker.getTags().contains("fossil_xray")) continue;
+                if (!inRangePositions.contains(shulker.blockPosition().asLong())) continue;
+
+                net.minecraft.nbt.CompoundTag data = shulker.getPersistentData();
+                int oldDeadline = data.getInt("xray_end_tick");
+                data.putInt("xray_end_tick", oldDeadline + XRAY_DURATION_TICKS);
+                extended++;
+            }
+
+            // Spawn shulkers for any new fossils in range (not already occupied)
             int newShulkers = spawnNewXrayShulkers(level);
 
-            Utils.sendMessageToAll("§d[Archipelago] §6Fossil X-ray extended! §7(" + remainingSeconds + "s remaining)");
-            LOGGER.info("Fossil X-ray extended, {} new shulkers, end tick: {}", newShulkers, xrayEndTick);
+            Utils.sendMessageToAll("§d[Archipelago] §6Fossil X-ray extended!");
+            LOGGER.info("Fossil X-ray extended, {} existing extended, {} new shulkers", extended, newShulkers);
         } else {
             // Fresh activation
-            clearAllXrayShulkers();
-            xrayEndTick = currentTick + XRAY_DURATION_TICKS;
-
             int totalShulkers = spawnNewXrayShulkers(level);
 
             Utils.sendMessageToAll("§d[Archipelago] §eFossil X-ray received! Look for glowing outlines nearby!");
@@ -317,15 +366,14 @@ public class FossilManager {
             List<BlockPos> fossilPositions = findFossilsNearPlayer(player, level);
 
             for (BlockPos pos : fossilPositions) {
-                long posLong = pos.asLong();
-
-                if (activeXrayShulkers.containsKey(posLong)) {
+                // Skip if there's already an xray shulker at this position
+                if (hasXrayShulkerAt(level, pos)) {
                     continue;
                 }
 
-                Shulker shulker = spawnXrayShulker(level, pos);
+                int randomDelay = 20 + xrayRandom.nextInt(21); // 20-40 ticks
+                Shulker shulker = spawnXrayShulker(level, pos, randomDelay);
                 if (shulker != null) {
-                    activeXrayShulkers.put(posLong, shulker);
                     totalShulkers++;
                 }
             }
@@ -336,39 +384,22 @@ public class FossilManager {
     /**
      * Spawn an X-ray shulker at the given position with proper NBT tags
      */
-    private static Shulker spawnXrayShulker(ServerLevel level, BlockPos pos) {
+    private static final Random xrayRandom = new Random();
+
+    private static Shulker spawnXrayShulker(ServerLevel level, BlockPos pos, int staggerOffset) {
         Shulker shulker = EntityType.SHULKER.create(level);
         if (shulker == null) return null;
 
         shulker.setPos(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
-
-        // NoAI
         shulker.setNoAi(true);
-
-        // Silent
         shulker.setSilent(true);
-
-        // Invulnerable
         shulker.setInvulnerable(true);
-
-        // Glowing
         shulker.setGlowingTag(true);
+        shulker.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, Integer.MAX_VALUE, 0, true, false));     
 
-        // Set Peek:0 via NBT (closed shell)
-        net.minecraft.nbt.CompoundTag nbt = new net.minecraft.nbt.CompoundTag();
-        shulker.saveWithoutId(nbt);
-        nbt.putByte("Peek", (byte) 0);
-        shulker.load(nbt);
-
-        // Invisibility effect (Id:14) with duration matching X-ray duration
-        MobEffectInstance invisibility = new MobEffectInstance(
-            MobEffects.INVISIBILITY,
-            XRAY_DURATION_TICKS + 20,
-            0,
-            true,
-            false
-        );
-        shulker.addEffect(invisibility);
+        // Persistent deadline — survives server restart
+        int deadline = APRandomizer.getServer().getTickCount() + XRAY_DURATION_TICKS + staggerOffset;
+        shulker.getPersistentData().putInt("xray_end_tick", deadline);
 
         // Tag for identification
         shulker.addTag("fossil_xray");
@@ -414,36 +445,43 @@ public class FossilManager {
     }
 
     /**
-     * Remove X-ray shulker at a specific position (called when block is mined)
+     * Kill any X-ray shulkers at the given block position.
      */
-    public static void removeXrayShulkerAt(long posLong) {
-        Shulker shulker = activeXrayShulkers.remove(posLong);
-        if (shulker != null) {
+    public static void killShulkersAt(BlockPos pos) {
+        if (APRandomizer.getServer() == null) return;
+        ServerLevel level = APRandomizer.getServer().overworld();
+        net.minecraft.world.phys.AABB area = new net.minecraft.world.phys.AABB(
+            pos.getX(), pos.getY(), pos.getZ(),
+            pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1);
+        for (Shulker shulker : level.getEntitiesOfClass(Shulker.class, area)) {
             shulker.setInvulnerable(false);
             shulker.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
-            LOGGER.debug("Removed X-ray shulker at position {}", posLong);
         }
     }
 
     /**
-     * Remove X-ray shulker at a specific BlockPos (convenience method)
+     * Check if there's already an xray shulker at the given position.
      */
-    public static void removeXrayShulkerAt(BlockPos pos) {
-        removeXrayShulkerAt(pos.asLong());
+    private static boolean hasXrayShulkerAt(ServerLevel level, BlockPos pos) {
+        net.minecraft.world.phys.AABB area = new net.minecraft.world.phys.AABB(
+            pos.getX(), pos.getY(), pos.getZ(),
+            pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1);
+        for (Shulker shulker : level.getEntitiesOfClass(Shulker.class, area)) {
+            if (shulker.getTags().contains("fossil_xray")) return true;
+        }
+        return false;
     }
 
     /**
-     * Clear all active X-ray shulkers
+     * Check if there are any fossil_xray shulkers anywhere in the world.
      */
-    public static void clearAllXrayShulkers() {
-        for (Shulker shulker : activeXrayShulkers.values()) {
-            if (shulker != null) {
-                shulker.setInvulnerable(false);
-                shulker.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
+    private static boolean hasXrayShulkersInWorld(ServerLevel level) {
+        for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+            if (entity instanceof Shulker shulker && shulker.getTags().contains("fossil_xray")) {
+                return true;
             }
         }
-        activeXrayShulkers.clear();
-        xrayEndTick = 0;
+        return false;
     }
 
     /**
@@ -475,7 +513,7 @@ public class FossilManager {
                     Math.abs(fossilPos.getZ() - playerPos.getZ()) > 32) continue;
 
                 if (level.getBlockState(fossilPos).isAir()) {
-                    removeXrayShulkerAt(posLong);
+                    killShulkersAt(fossilPos);
                     APRandomizer.worldData.markFossilCollected(posLong);
                     APRandomizer.worldData.addFossils(1);
                     int newBalance = APRandomizer.worldData.getFossilBalance();
@@ -491,16 +529,72 @@ public class FossilManager {
     }
 
     /**
-     * Call this every tick to check if X-ray has expired
+     * Kill all shulkers in the world that are not inside a solid block.
+     * Called every tick.
+     */
+    public static void tickStaleShulkerCleanup() {
+        if (APRandomizer.getServer() == null) return;
+
+        ServerLevel level = APRandomizer.getServer().overworld();
+        List<Shulker> toKill = new ArrayList<>();
+
+        for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+            if (!(entity instanceof Shulker shulker)) continue;
+            BlockPos shulkerPos = shulker.blockPosition();
+            if (level.getBlockState(shulkerPos).isAir()) {
+                toKill.add(shulker);
+            }
+        }
+
+        if (!toKill.isEmpty()) {
+            APRandomizer.getServer().execute(() -> {
+                for (Shulker shulker : toKill) {
+                    shulker.setInvulnerable(false);
+                    shulker.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
+                }
+            });
+            LOGGER.debug("Cleaned up {} stale shulkers", toKill.size());
+        }
+    }
+
+    /**
+     * Every tick, check all fossil_xray shulkers in the world for expired deadlines.
+     * Uses persistent NBT on each entity, so it works even after server restart.
      */
     public static void tickXraySessions() {
-        if (activeXrayShulkers.isEmpty()) return;
+        if (APRandomizer.getServer() == null) return;
 
+        ServerLevel level = APRandomizer.getServer().overworld();
         int currentTick = APRandomizer.getServer().getTickCount();
+        boolean noPlayersOnline = APRandomizer.getServer().getPlayerList().getPlayers().isEmpty();
 
-        if (currentTick > xrayEndTick) {
-            clearAllXrayShulkers();
-            LOGGER.info("Fossil X-ray expired, removed all shulkers");
+        List<Shulker> expired = new ArrayList<>();
+
+        for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
+            if (!(entity instanceof Shulker shulker)) continue;
+            if (!shulker.getTags().contains("fossil_xray")) continue;
+
+            net.minecraft.nbt.CompoundTag data = shulker.getPersistentData();
+            if (!data.contains("xray_end_tick")) {
+                // No deadline = leftover from old version, kill it
+                expired.add(shulker);
+                continue;
+            }
+
+            if (noPlayersOnline) {
+                // Freeze timer: push deadline forward by 1 tick
+                data.putInt("xray_end_tick", data.getInt("xray_end_tick") + 1);
+                continue;
+            }
+
+            if (currentTick > data.getInt("xray_end_tick")) {
+                expired.add(shulker);
+            }
+        }
+
+        for (Shulker shulker : expired) {
+            shulker.setInvulnerable(false);
+            shulker.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
         }
     }
 

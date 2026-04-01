@@ -17,6 +17,9 @@ public class onServerTick {
 
     @SubscribeEvent
     static public void serverTickEvent(TickEvent.ServerTickEvent event) {
+        // Only run at END phase (after entity ticking) to avoid ConcurrentModificationException
+        if (event.phase != TickEvent.Phase.END) return;
+
         // Tick X-ray sessions
         FossilManager.tickXraySessions();
 
@@ -25,6 +28,9 @@ public class onServerTick {
 
         // Check for fossils destroyed by fire, pistons, etc.
         FossilManager.tickOrphanFossilCheck();
+
+        // Clean up X-ray shulkers that are no longer inside a solid block, just to be safe
+        FossilManager.tickStaleShulkerCleanup();
 
         if(APRandomizer.isJailPlayers())
             return;

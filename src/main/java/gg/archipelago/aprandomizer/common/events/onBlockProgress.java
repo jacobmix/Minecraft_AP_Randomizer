@@ -127,8 +127,6 @@ public class onBlockProgress {
                                 if (excavateShouldBreak) {
                                     BlockProgressManager.clearProgress(excavatePos);
                                     BlockProgressManager.removeCrackAnimation(level, excavatePos);
-                                    // Check for fossils before breaking
-                                    FossilManager.removeXrayShulkerAt(excavatePos);
                                     FossilManager.checkAndCollectFossil(excavatePos, serverPlayer);
                                     level.destroyBlock(excavatePos, true, serverPlayer);
                                     BlocksBrokenManager.addBlockBroken(serverPlayer);
@@ -151,8 +149,6 @@ public class onBlockProgress {
                         BlockProgressManager.removeCrackAnimation(level, currentMiningPos);
                         lastMiningPos.remove(playerId);
 
-                        // Check for fossils before breaking
-                        FossilManager.removeXrayShulkerAt(currentMiningPos);
                         FossilManager.checkAndCollectFossil(currentMiningPos, serverPlayer);
 
                         // Check for True Golden Pick
@@ -203,8 +199,6 @@ public class onBlockProgress {
         for (int x = ox; x < ox + 16; x++) {
             for (int z = oz; z < oz + 16; z++) {
                 BlockPos blockPos = new BlockPos(x, layer, z);
-                // Check for fossils before breaking
-                FossilManager.removeXrayShulkerAt(blockPos);
                 FossilManager.checkAndCollectFossil(blockPos, player);
                 level.destroyBlock(blockPos, true);
             }
