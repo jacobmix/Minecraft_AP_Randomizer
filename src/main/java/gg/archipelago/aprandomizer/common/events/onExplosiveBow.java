@@ -87,7 +87,7 @@ public class onExplosiveBow {
             level.explode(
                 arrow.getOwner(), // source entity - won't take damage from own explosion
                 pos.x, pos.y, pos.z,
-                5.0f,
+                3.5f,
                 false,
                 Level.ExplosionInteraction.BLOCK
             );
