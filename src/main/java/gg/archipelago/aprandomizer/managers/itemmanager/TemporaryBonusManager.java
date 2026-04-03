@@ -45,8 +45,8 @@ public class TemporaryBonusManager {
         // Apply to all online players
         if (APRandomizer.getServer() != null) {
             for (ServerPlayer player : APRandomizer.getServer().getPlayerList().getPlayers()) {
-                addBonusToPlayer(player.getUUID(), bonusType, durationTicks);
                 applyBonusEffect(player, bonusType);
+                addBonusToPlayer(player.getUUID(), bonusType, durationTicks);
             }
         }
 
@@ -99,12 +99,14 @@ public class TemporaryBonusManager {
             LOGGER.info("Applying Haste Boost to {}", player.getName().getString());
         } else if (bonusType.equals(BONUS_EXCAVATION)) {
             // Max out excavation level
-            if (excavationBoostActivePlayers == 0) {
-                originalExcavationLevel = ExcavationPower.level;
-                ExcavationPower.level = 3; // Max level
-                LOGGER.info("Excavation Boost activated! Level {} -> 3", originalExcavationLevel);
+            if (!hasActiveBonus(player.getUUID(), BONUS_EXCAVATION)) {
+                if (excavationBoostActivePlayers == 0) {
+                    originalExcavationLevel = ExcavationPower.level;
+                    ExcavationPower.level = 3; // Max level
+                    LOGGER.info("Excavation Boost activated! Level {} -> 3", originalExcavationLevel);
+                }
+                excavationBoostActivePlayers++;
             }
-            excavationBoostActivePlayers++;
         }
     }
 
@@ -140,8 +142,8 @@ public class TemporaryBonusManager {
                     int seconds = entry.getValue();
                     int ticks = seconds * 20;
 
-                    addBonusToPlayer(uuid, bonusType, ticks);
                     applyBonusEffect(player, bonusType);
+                    addBonusToPlayer(uuid, bonusType, ticks);
 
                     String bonusName = bonusType.equals(BONUS_HASTE) ? "Haste Boost" : "Excavation Boost";
                     Utils.sendMessageToPlayer(player, "You received " + bonusName + " while offline! (" + seconds + " seconds)");
