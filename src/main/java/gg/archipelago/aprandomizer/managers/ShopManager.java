@@ -225,11 +225,6 @@ public class ShopManager {
         Utils.sendMessageToAll("§eUnlocked in shop: §f" + tierName);
 
         LOGGER.info("Unlocked tier: {} ({})", tierName, tierKey);
-
-        // Save
-        APRandomizer.getServer().execute(() -> {
-            APRandomizer.getServer().saveEverything(true, true, true);
-        });
     }
 
     /**
@@ -260,6 +255,24 @@ public class ShopManager {
             }
         }
         return total;
+    }
+
+    /**
+     * Find the next tier to unlock for a category.
+     * Derives from WorldData (persistent) instead of in-memory counters.
+     * Returns -1 if all tiers are already unlocked.
+     */
+    public static int findNextTierToUnlock(String category) {
+        if (APRandomizer.worldData == null) return 1;
+
+        int maxTier = getMaxTier(category);
+        for (int tier = 1; tier <= maxTier; tier++) {
+            String tierKey = category + "_" + tier;
+            if (!APRandomizer.worldData.isTierUnlocked(tierKey)) {
+                return tier;
+            }
+        }
+        return -1;
     }
 
     /**

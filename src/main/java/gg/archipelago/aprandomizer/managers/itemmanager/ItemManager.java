@@ -66,13 +66,6 @@ public class ItemManager {
     private static final long PROGRESSIVE_EFFICIENCY_ID = 50026; // Efficiency (3 tiers)
     private static final long PROGRESSIVE_SHOP_ID = 50031;      // Shop tiers (3 tiers)
 
-    // Track how many of each progressive item we've received (for tier calculation)
-    private int toolUnlocksReceived = 0;
-    private int hasteUnlocksReceived = 0;
-    private int excavationUnlocksReceived = 0;
-    private int reachUnlocksReceived = 0;
-    private int efficiencyUnlocksReceived = 0;
-    private int shopUnlocksReceived = 0;
 
     // Item stacks - explicit IDs matching items.json
     private final HashMap<Long, ItemStack> itemStacks = new HashMap<>();
@@ -212,33 +205,45 @@ public class ItemManager {
         receivedItems.add(itemID);
 
         // Handle progressive items - unlock tiers in the shop instead of direct application
+        // Uses WorldData to derive next tier (crash-proof, no in-memory counters)
         if (itemID == PROGRESSIVE_TOOLS_ID) {
-            toolUnlocksReceived++;
-            ShopManager.unlockTier(ShopManager.CATEGORY_TOOLS, toolUnlocksReceived);
-            LOGGER.info("Progressive Tools unlock received (total: {}), unlocking tools tier {}", toolUnlocksReceived, toolUnlocksReceived);
-        } else if (itemID == PROGRESSIVE_HASTE_ID) {
-            hasteUnlocksReceived++;
-            ShopManager.unlockTier(ShopManager.CATEGORY_HASTE, hasteUnlocksReceived);
-            LOGGER.info("Progressive Haste unlock received, unlocking haste tier {}", hasteUnlocksReceived);
-        } else if (itemID == PROGRESSIVE_EXCAVATION_ID) {
-            excavationUnlocksReceived++;
-            ShopManager.unlockTier(ShopManager.CATEGORY_EXCAVATION, excavationUnlocksReceived);
-            LOGGER.info("Progressive Excavation unlock received, unlocking excavation tier {}", excavationUnlocksReceived);
-        } else if (itemID == PROGRESSIVE_REACH_ID) {
-            reachUnlocksReceived++;
-            ShopManager.unlockTier(ShopManager.CATEGORY_REACH, reachUnlocksReceived);
-            LOGGER.info("Progressive Reach unlock received, unlocking reach tier {}", reachUnlocksReceived);
-        } else if (itemID == PROGRESSIVE_EFFICIENCY_ID) {
-            efficiencyUnlocksReceived++;
-            ShopManager.unlockTier(ShopManager.CATEGORY_EFFICIENCY, efficiencyUnlocksReceived);
-            LOGGER.info("Progressive Efficiency unlock received, unlocking efficiency tier {}", efficiencyUnlocksReceived);
-        } else if (itemID == PROGRESSIVE_SHOP_ID) {
-            shopUnlocksReceived++;
-            if (APRandomizer.worldData != null) {
-                APRandomizer.worldData.setShopTierUnlocked(shopUnlocksReceived);
+            int nextTier = ShopManager.findNextTierToUnlock(ShopManager.CATEGORY_TOOLS);
+            if (nextTier > 0) {
+                ShopManager.unlockTier(ShopManager.CATEGORY_TOOLS, nextTier);
+                LOGGER.info("Progressive Tools unlock received, unlocking tools tier {}", nextTier);
             }
-            Utils.sendMessageToAll("§d[Archipelago] §eItem Shop Tier " + shopUnlocksReceived + " unlocked!");
-            LOGGER.info("Progressive Shop unlock received, unlocking shop tier {}", shopUnlocksReceived);
+        } else if (itemID == PROGRESSIVE_HASTE_ID) {
+            int nextTier = ShopManager.findNextTierToUnlock(ShopManager.CATEGORY_HASTE);
+            if (nextTier > 0) {
+                ShopManager.unlockTier(ShopManager.CATEGORY_HASTE, nextTier);
+                LOGGER.info("Progressive Haste unlock received, unlocking haste tier {}", nextTier);
+            }
+        } else if (itemID == PROGRESSIVE_EXCAVATION_ID) {
+            int nextTier = ShopManager.findNextTierToUnlock(ShopManager.CATEGORY_EXCAVATION);
+            if (nextTier > 0) {
+                ShopManager.unlockTier(ShopManager.CATEGORY_EXCAVATION, nextTier);
+                LOGGER.info("Progressive Excavation unlock received, unlocking excavation tier {}", nextTier);
+            }
+        } else if (itemID == PROGRESSIVE_REACH_ID) {
+            int nextTier = ShopManager.findNextTierToUnlock(ShopManager.CATEGORY_REACH);
+            if (nextTier > 0) {
+                ShopManager.unlockTier(ShopManager.CATEGORY_REACH, nextTier);
+                LOGGER.info("Progressive Reach unlock received, unlocking reach tier {}", nextTier);
+            }
+        } else if (itemID == PROGRESSIVE_EFFICIENCY_ID) {
+            int nextTier = ShopManager.findNextTierToUnlock(ShopManager.CATEGORY_EFFICIENCY);
+            if (nextTier > 0) {
+                ShopManager.unlockTier(ShopManager.CATEGORY_EFFICIENCY, nextTier);
+                LOGGER.info("Progressive Efficiency unlock received, unlocking efficiency tier {}", nextTier);
+            }
+        } else if (itemID == PROGRESSIVE_SHOP_ID) {
+            if (APRandomizer.worldData != null) {
+                int currentShopTier = APRandomizer.worldData.getShopTierUnlocked();
+                int nextShopTier = currentShopTier + 1;
+                APRandomizer.worldData.setShopTierUnlocked(nextShopTier);
+                Utils.sendMessageToAll("§d[Archipelago] §eItem Shop Tier " + nextShopTier + " unlocked!");
+                LOGGER.info("Progressive Shop unlock received, unlocking shop tier {}", nextShopTier);
+            }
         }
 
         // Handle World Barrier Expansion
