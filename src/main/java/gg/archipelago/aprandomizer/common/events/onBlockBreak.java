@@ -90,8 +90,8 @@ public class onBlockBreak {
         if (!BlockProgressManager.hasProgress(pos) && event.getPlayer() instanceof ServerPlayer serverPlayer) {
             ServerLevel level = serverPlayer.getLevel();
 
-            // Count the block
-            BlocksBrokenManager.addBlockBroken(serverPlayer);
+            // Count the block (skip scaffolding)
+            BlocksBrokenManager.addBlockBrokenAt(serverPlayer, pos);
 
             // Trigger excavation for insta-mined blocks (skip if using True Golden Pick)
             boolean isTruePick = serverPlayer.getMainHandItem().getOrCreateTag().getBoolean("truepick");
@@ -103,8 +103,8 @@ public class onBlockBreak {
                 for (BlockPos excavatePos : excavationTargets) {
                     BlockState excavateState = level.getBlockState(excavatePos);
                     if (!excavateState.isAir()) {
+                        BlocksBrokenManager.addBlockBrokenAt(serverPlayer, excavatePos);
                         level.destroyBlock(excavatePos, true, serverPlayer);
-                        BlocksBrokenManager.addBlockBroken(serverPlayer);
                         APRandomizer.getLayerManager().addLayerCheck(excavatePos.getY());
 
                         // Damage tool for excavation

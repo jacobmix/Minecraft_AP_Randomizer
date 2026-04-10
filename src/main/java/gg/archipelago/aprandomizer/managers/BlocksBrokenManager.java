@@ -1,7 +1,9 @@
 package gg.archipelago.aprandomizer.managers;
 
 import gg.archipelago.aprandomizer.APRandomizer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Score;
 import net.minecraft.world.scores.Scoreboard;
@@ -34,6 +36,11 @@ public class BlocksBrokenManager {
     }
 
     public static void addBlockBroken(ServerPlayer player) {
+        addBlockBroken(player, 1);
+    }
+    
+    public static void addBlockBrokenAt(ServerPlayer player, BlockPos pos) {
+        if (player.getLevel().getBlockState(pos).is(Blocks.SCAFFOLDING)) return;
         addBlockBroken(player, 1);
     }
 

@@ -128,8 +128,8 @@ public class onBlockProgress {
                                     BlockProgressManager.clearProgress(excavatePos);
                                     BlockProgressManager.removeCrackAnimation(level, excavatePos);
                                     FossilManager.checkAndCollectFossil(excavatePos, serverPlayer);
+                                    BlocksBrokenManager.addBlockBrokenAt(serverPlayer, excavatePos);
                                     level.destroyBlock(excavatePos, true, serverPlayer);
-                                    BlocksBrokenManager.addBlockBroken(serverPlayer);
                                     APRandomizer.getLayerManager().addLayerCheck(excavatePos.getY());
 
                                     // Damage tool for excavation
@@ -155,11 +155,11 @@ public class onBlockProgress {
                         if (serverPlayer.getMainHandItem().getOrCreateTag().getBoolean("truepick")) {
                             handleTrueGoldenPick(serverPlayer, level, currentMiningPos);
                         } else {
+                            // Count for scoreboard (skip scaffolding) - must be before destroyBlock
+                            BlocksBrokenManager.addBlockBrokenAt(serverPlayer, currentMiningPos);
+
                             // Actually break the block with drops
                             level.destroyBlock(currentMiningPos, true, serverPlayer);
-
-                            // Count for scoreboard
-                            BlocksBrokenManager.addBlockBroken(serverPlayer);
                         }
 
                         // Check layer
