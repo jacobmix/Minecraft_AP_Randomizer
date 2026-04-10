@@ -190,8 +190,10 @@ public class TemporaryBonusManager {
                         excavationBoostActivePlayers = Math.max(0, excavationBoostActivePlayers - 1);
                     }
 
-                    if (player != null) {
-                        String bonusName = bonusType.equals(BONUS_HASTE) ? "Haste Boost" : "Excavation Boost";
+                    // Only show "expired" for non-global bonuses (haste is per-player).
+                    // Excavation message is sent below when the global boost actually ends.
+                    if (player != null && !bonusType.equals(BONUS_EXCAVATION)) {
+                        String bonusName = bonusType.equals(BONUS_HASTE) ? "Haste Boost" : bonusType;
                         Utils.sendMessageToPlayer(player, bonusName + " has expired!");
                     }
                 } else {
@@ -222,6 +224,7 @@ public class TemporaryBonusManager {
             ExcavationPower.level = originalExcavationLevel;
             LOGGER.info("Excavation Boost expired, level restored to {}", originalExcavationLevel);
             originalExcavationLevel = -1;
+            Utils.sendMessageToAll("§cExcavation Boost has expired!");
         }
     }
 
