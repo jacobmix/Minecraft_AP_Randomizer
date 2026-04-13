@@ -22,18 +22,25 @@ def get_rules_lookup(player: int):
     return rules_lookup
 
 
-def get_expansions_needed_for_chunk(chunk_index: int) -> int:
+def get_expansions_needed_for_chunk(chunk_index: int, chunk_count: int) -> int:
     """Calculate how many World Barrier Expansion items are needed to access a chunk.
 
-    Tier 1 (side=1): chunk 0 -> 0 expansions
-    Tier 2 (side=2): chunks 1-3 -> 1 expansion
-    Tier 3 (side=3): chunks 4-8 -> 2 expansions
-    etc.
+    The grid is side x side where side = ceil(sqrt(chunk_count)).
+    Chunk at grid position (cx, cz) needs side = max(cx, cz) + 1.
+    Expansions needed = needed_side - 1.
+
+    Example 3x3:
+      chunk 0 (0,0) -> 0 exp | chunk 1 (1,0) -> 1 exp | chunk 2 (2,0) -> 2 exp
+      chunk 3 (0,1) -> 1 exp | chunk 4 (1,1) -> 1 exp | chunk 5 (2,1) -> 2 exp
+      chunk 6 (0,2) -> 2 exp | chunk 7 (1,2) -> 2 exp | chunk 8 (2,2) -> 2 exp
     """
     if chunk_index == 0:
         return 0
-    tier = math.ceil(math.sqrt(chunk_index + 1))
-    return tier - 1
+    side = math.ceil(math.sqrt(chunk_count))
+    cx = chunk_index % side
+    cz = chunk_index // side
+    needed_side = max(cx, cz) + 1
+    return needed_side - 1
 
 
 def set_rules(mc_world: World) -> None:
@@ -58,7 +65,7 @@ def set_rules(mc_world: World) -> None:
     if mc_world.options.progressive_chunks.value:
         chunk_count = mc_world.options.chunk_count.value
         for c in range(chunk_count):
-            expansions_needed = get_expansions_needed_for_chunk(c)
+            expansions_needed = get_expansions_needed_for_chunk(c, chunk_count)
             if expansions_needed > 0:
                 # Add rule to all locations in this chunk
                 for loc in multiworld.get_locations(player):
