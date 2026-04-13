@@ -56,14 +56,27 @@ public class ExcavationPower implements Power {
         HashSet<BlockPos> potentialPositions = new HashSet<>();
         switch (face) {
             case DOWN, UP -> {
+                // Normalize rotation to 0-360
+                float rot = player.getYHeadRot() % 360;
+                if (rot < 0) rot += 360;
+                // 0=south, 90=west, 180=north, 270=east
+                // Determine primary axis (line direction) and secondary direction (expansion toward player facing)
+                boolean primaryNS = (rot >= 45 && rot < 135) || (rot >= 225 && rot < 315);
+
+                BlockPos secondaryDir;
+                BlockPos oppositeDir;
+                if (primaryNS) {
+                    boolean facingEast = rot >= 225 && rot < 315;
+                    secondaryDir = facingEast ? pos.east() : pos.west();
+                    oppositeDir = facingEast ? pos.west() : pos.east();
+                } else {
+                    boolean facingNorth = rot >= 135 && rot < 225;
+                    secondaryDir = facingNorth ? pos.north() : pos.south();
+                    oppositeDir = facingNorth ? pos.south() : pos.north();
+                }
+
                 if (level >= 1) {
-                    // Normalize rotation to 0-360
-                    float rot = player.getYHeadRot() % 360;
-                    if (rot < 0) rot += 360;
-                    // 0=south, 90=west, 180=north, 270=east
-                    // If facing roughly N/S (315-45 or 135-225), extend E/W
-                    // If facing roughly E/W (45-135 or 225-315), extend N/S
-                    if ((rot >= 45 && rot < 135) || (rot >= 225 && rot < 315)) {
+                    if (primaryNS) {
                         potentialPositions.add(pos.north());
                         potentialPositions.add(pos.south());
                     } else {
@@ -72,16 +85,24 @@ public class ExcavationPower implements Power {
                     }
                 }
                 if (level >= 2) {
-                    potentialPositions.add(pos.north());
-                    potentialPositions.add(pos.south());
-                    potentialPositions.add(pos.east());
-                    potentialPositions.add(pos.west());
+                    potentialPositions.add(secondaryDir);
+                    if (primaryNS) {
+                        potentialPositions.add(secondaryDir.north());
+                        potentialPositions.add(secondaryDir.south());
+                    } else {
+                        potentialPositions.add(secondaryDir.east());
+                        potentialPositions.add(secondaryDir.west());
+                    }
                 }
                 if (level >= 3) {
-                    potentialPositions.add(pos.north().west());
-                    potentialPositions.add(pos.north().east());
-                    potentialPositions.add(pos.south().west());
-                    potentialPositions.add(pos.south().east());
+                    potentialPositions.add(oppositeDir);
+                    if (primaryNS) {
+                        potentialPositions.add(oppositeDir.north());
+                        potentialPositions.add(oppositeDir.south());
+                    } else {
+                        potentialPositions.add(oppositeDir.east());
+                        potentialPositions.add(oppositeDir.west());
+                    }
                 }
             }
             case EAST, WEST -> {
