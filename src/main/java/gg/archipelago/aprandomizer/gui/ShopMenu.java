@@ -2,6 +2,7 @@ package gg.archipelago.aprandomizer.gui;
 
 import gg.archipelago.aprandomizer.APRandomizer;
 import gg.archipelago.aprandomizer.common.Utils.Utils;
+import gg.archipelago.aprandomizer.managers.FlyManager;
 import gg.archipelago.aprandomizer.managers.ShopManager;
 import io.github.archipelagomw.flags.NetworkItem;
 import net.minecraft.nbt.CompoundTag;
@@ -40,6 +41,7 @@ public class ShopMenu extends ChestMenu {
     private static final int SLOT_EXCAVATION = 4;
     private static final int SLOT_REACH = 5;
     private static final int SLOT_EFFICIENCY = 6;
+    private static final int SLOT_FLY = 8;
 
     // Row 1: Info + separator
     private static final int SLOT_INFO = 45;
@@ -97,6 +99,7 @@ public class ShopMenu extends ChestMenu {
         shopContainer.setItem(SLOT_EXCAVATION, createUpgradeItem(ShopManager.CATEGORY_EXCAVATION, Items.STRUCTURE_VOID));
         shopContainer.setItem(SLOT_REACH, createUpgradeItem(ShopManager.CATEGORY_REACH, Items.ENDER_PEARL));
         shopContainer.setItem(SLOT_EFFICIENCY, createUpgradeItem(ShopManager.CATEGORY_EFFICIENCY, Items.REDSTONE));
+        shopContainer.setItem(SLOT_FLY, createFlyItem());
 
         // Row 1: Info
         shopContainer.setItem(SLOT_INFO, createInfoItem());
@@ -303,6 +306,40 @@ public class ShopMenu extends ChestMenu {
     }
 
     /**
+     * Create the fly button item
+     */
+    private ItemStack createFlyItem() {
+        ItemStack stack = new ItemStack(Items.ELYTRA);
+        List<String> lore = new ArrayList<>();
+
+        boolean canFly = FlyManager.canFly(player);
+        boolean isFlying = FlyManager.isFlying(player);
+
+        if (isFlying) {
+            setItemNameAndLore(stack, "§bTemporary Flight §7(Active)", List.of("§7Currently flying!", "", "§7Duration: §f60 seconds"));
+        } else if (canFly) {
+            lore.add("§7Grants 1 minute of creative flight");
+            lore.add("§7Cooldown: §f10 minutes");
+            lore.add("");
+            lore.add("§aClick to activate!");
+            setItemNameAndLore(stack, "§bTemporary Flight", lore);
+            stack.enchant(Enchantments.UNBREAKING, 1);
+            stack.getOrCreateTag().putInt("HideFlags", 1);
+        } else {
+            int cooldown = FlyManager.getCooldownRemainingSeconds(player);
+            int minutes = cooldown / 60;
+            int seconds = cooldown % 60;
+            lore.add("§7Grants 1 minute of creative flight");
+            lore.add("");
+            lore.add("§cCooldown: §f" + minutes + "m " + seconds + "s");
+            setItemNameAndLore(stack, "§7Temporary Flight §c(Cooldown)", lore);
+        }
+
+        stack.getOrCreateTag().putString("shopAction", "fly");
+        return stack;
+    }
+
+    /**
      * Create the info item showing fossil balance and stats
      */
     private ItemStack createInfoItem() {
@@ -398,6 +435,9 @@ public class ShopMenu extends ChestMenu {
                     break;
                 case "info":
                     break;
+                case "fly":
+                    handleFlyPurchase();
+                    break;
                 case "itemShop":
                     handleItemShopPurchase(tag.getInt("shopIndex"));
                     break;
@@ -461,6 +501,29 @@ public class ShopMenu extends ChestMenu {
         // Refresh the GUI
         refreshShopItems();
         player.containerMenu.broadcastFullState();
+    }
+
+    /**
+     * Handle fly button click
+     */
+    private void handleFlyPurchase() {
+        if (FlyManager.isFlying(player)) {
+            Utils.sendMessageToPlayer(player, "§7You are already flying!");
+            return;
+        }
+
+        if (!FlyManager.canFly(player)) {
+            int cooldown = FlyManager.getCooldownRemainingSeconds(player);
+            Utils.sendMessageToPlayer(player, "§cFlight on cooldown! §7" + (cooldown / 60) + "m " + (cooldown % 60) + "s remaining");
+            player.playNotifySound(SoundEvents.VILLAGER_NO, SoundSource.PLAYERS, 1.0f, 1.0f);
+            refreshShopItems();
+            player.containerMenu.broadcastFullState();
+            return;
+        }
+
+        FlyManager.grantFlight(player);
+        player.playNotifySound(SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 1.0f, 1.0f);
+        player.closeContainer();
     }
 
     @Override

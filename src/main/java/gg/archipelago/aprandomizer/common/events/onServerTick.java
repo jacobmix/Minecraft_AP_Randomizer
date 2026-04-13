@@ -2,6 +2,7 @@ package gg.archipelago.aprandomizer.common.events;
 
 import gg.archipelago.aprandomizer.APRandomizer;
 import gg.archipelago.aprandomizer.common.Utils.Utils;
+import gg.archipelago.aprandomizer.managers.FlyManager;
 import gg.archipelago.aprandomizer.managers.FossilManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -31,6 +32,9 @@ public class onServerTick {
 
         // Clean up X-ray shulkers that are no longer inside a solid block, just to be safe
         FossilManager.tickStaleShulkerCleanup();
+
+        // Tick temporary flight timers
+        FlyManager.tick();
 
         if(APRandomizer.isJailPlayers())
             return;
