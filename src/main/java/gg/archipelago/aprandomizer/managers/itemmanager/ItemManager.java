@@ -433,28 +433,32 @@ public class ItemManager {
      * Tier 0: Wooden, 1: Stone, 2: Iron, 3: Diamond, 4: Netherite
      */
     private void applyToolsUpgrade(int tier) {
-        ItemStack pick, shovel, axe;
+        ItemStack pick, shovel, axe, hoe;
 
         switch (tier) {
             case 1: // Stone
                 pick = createPermanentItem(new ItemStack(Items.STONE_PICKAXE), "pick");
                 shovel = createPermanentItem(new ItemStack(Items.STONE_SHOVEL), "shovel");
                 axe = createPermanentItem(new ItemStack(Items.STONE_AXE), "axe");
+                hoe = createPermanentItem(new ItemStack(Items.STONE_HOE), "hoe");
                 break;
             case 2: // Iron
                 pick = createPermanentItem(new ItemStack(Items.IRON_PICKAXE), "pick");
                 shovel = createPermanentItem(new ItemStack(Items.IRON_SHOVEL), "shovel");
                 axe = createPermanentItem(new ItemStack(Items.IRON_AXE), "axe");
+                hoe = createPermanentItem(new ItemStack(Items.IRON_HOE), "hoe");
                 break;
             case 3: // Diamond
                 pick = createPermanentItem(new ItemStack(Items.DIAMOND_PICKAXE), "pick");
                 shovel = createPermanentItem(new ItemStack(Items.DIAMOND_SHOVEL), "shovel");
                 axe = createPermanentItem(new ItemStack(Items.DIAMOND_AXE), "axe");
+                hoe = createPermanentItem(new ItemStack(Items.DIAMOND_HOE), "hoe");
                 break;
             case 4: // Netherite
                 pick = createPermanentItem(new ItemStack(Items.NETHERITE_PICKAXE), "pick");
                 shovel = createPermanentItem(new ItemStack(Items.NETHERITE_SHOVEL), "shovel");
                 axe = createPermanentItem(new ItemStack(Items.NETHERITE_AXE), "axe");
+                hoe = createPermanentItem(new ItemStack(Items.NETHERITE_HOE), "hoe");
                 break;
             default:
                 return;
@@ -464,6 +468,7 @@ public class ItemManager {
         if (pick != null) permanentItems.put("pick", pick);
         if (shovel != null) permanentItems.put("shovel", shovel);
         if (axe != null) permanentItems.put("axe", axe);
+        if (hoe != null) permanentItems.put("hoe", hoe);
     }
 
     /**
@@ -523,7 +528,7 @@ public class ItemManager {
 
         if (enchantLevel > 0) {
             // Re-create pick, shovel and axe with efficiency enchant added
-            for (String key : new String[]{"pick", "shovel", "axe"}) {
+            for (String key : new String[]{"pick", "shovel", "axe", "hoe"}) {
                 if (permanentItems.containsKey(key)) {
                     ItemStack current = permanentItems.get(key);
                     // Only add if the tool doesn't already have a higher efficiency
@@ -590,10 +595,11 @@ public class ItemManager {
     public void initializeStartingTools() {
         LOGGER.info("Initializing starting tools for all players");
 
-        // Create wooden tools (tier 0) - pick, shovel, axe (no hoe)
+        // Create wooden tools (tier 0) - pick, shovel, axe, hoe
         ItemStack pick = createPermanentItem(new ItemStack(Items.WOODEN_PICKAXE), "pick");
         ItemStack shovel = createPermanentItem(new ItemStack(Items.WOODEN_SHOVEL), "shovel");
         ItemStack axe = createPermanentItem(new ItemStack(Items.WOODEN_AXE), "axe");
+        ItemStack hoe = createPermanentItem(new ItemStack(Items.WOODEN_HOE), "hoe");
 
         // Create shop item (Nether Star)
         ItemStack shopItem = new ItemStack(Items.NETHER_STAR);
@@ -616,6 +622,7 @@ public class ItemManager {
         permanentItems.put("pick", pick);
         permanentItems.put("shovel", shovel);
         permanentItems.put("axe", axe);
+        permanentItems.put("hoe", hoe);
         permanentItems.put("shop", shopItem);
         permanentItems.put("scaffolding", scaffolding);
 
