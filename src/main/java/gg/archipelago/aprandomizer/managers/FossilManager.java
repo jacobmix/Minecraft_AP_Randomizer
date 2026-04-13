@@ -329,7 +329,7 @@ public class FossilManager {
                 }
             }
 
-            // Extend deadline only on shulkers at in-range fossil positions
+            // Extend remaining time only on shulkers at in-range fossil positions
             int extended = 0;
             for (net.minecraft.world.entity.Entity entity : level.getAllEntities()) {
                 if (!(entity instanceof Shulker shulker)) continue;
@@ -337,8 +337,8 @@ public class FossilManager {
                 if (!inRangePositions.contains(shulker.blockPosition().asLong())) continue;
 
                 net.minecraft.nbt.CompoundTag data = shulker.getPersistentData();
-                int oldDeadline = data.getInt("xray_end_tick");
-                data.putInt("xray_end_tick", oldDeadline + XRAY_DURATION_TICKS);
+                int oldRemaining = data.getInt("xray_remaining");
+                data.putInt("xray_remaining", oldRemaining + XRAY_DURATION_TICKS);
                 extended++;
             }
 
@@ -395,11 +395,10 @@ public class FossilManager {
         shulker.setSilent(true);
         shulker.setInvulnerable(true);
         shulker.setGlowingTag(true);
-        shulker.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, Integer.MAX_VALUE, 0, true, false));     
+        shulker.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, Integer.MAX_VALUE, 0, true, false));
 
-        // Persistent deadline — survives server restart
-        int deadline = APRandomizer.getServer().getTickCount() + XRAY_DURATION_TICKS + staggerOffset;
-        shulker.getPersistentData().putInt("xray_end_tick", deadline);
+        // Countdown timer — decremented each tick, survives server restart
+        shulker.getPersistentData().putInt("xray_remaining", XRAY_DURATION_TICKS + staggerOffset);
 
         // Tag for identification
         shulker.addTag("fossil_xray");
@@ -558,14 +557,14 @@ public class FossilManager {
     }
 
     /**
-     * Every tick, check all fossil_xray shulkers in the world for expired deadlines.
-     * Uses persistent NBT on each entity, so it works even after server restart.
+     * Every tick, decrement xray_remaining on all fossil_xray shulkers.
+     * When it reaches 0, the shulker is removed. Freezes when no players are online.
+     * Uses persistent NBT on each entity, so it survives server restarts.
      */
     public static void tickXraySessions() {
         if (APRandomizer.getServer() == null) return;
 
         ServerLevel level = APRandomizer.getServer().overworld();
-        int currentTick = APRandomizer.getServer().getTickCount();
         boolean noPlayersOnline = APRandomizer.getServer().getPlayerList().getPlayers().isEmpty();
 
         List<Shulker> expired = new ArrayList<>();
@@ -575,19 +574,20 @@ public class FossilManager {
             if (!shulker.getTags().contains("fossil_xray")) continue;
 
             net.minecraft.nbt.CompoundTag data = shulker.getPersistentData();
-            if (!data.contains("xray_end_tick")) {
-                // No deadline = leftover from old version, kill it
+            if (!data.contains("xray_remaining")) {
+                // No countdown = leftover from old version, kill it
                 expired.add(shulker);
                 continue;
             }
 
-            if (noPlayersOnline) {
-                // Freeze timer: push deadline forward by 1 tick
-                data.putInt("xray_end_tick", data.getInt("xray_end_tick") + 1);
-                continue;
-            }
+            // Freeze timer when no players are online
+            if (noPlayersOnline) continue;
 
-            if (currentTick > data.getInt("xray_end_tick")) {
+            int remaining = data.getInt("xray_remaining");
+            remaining--;
+            data.putInt("xray_remaining", remaining);
+
+            if (remaining <= 0) {
                 expired.add(shulker);
             }
         }
