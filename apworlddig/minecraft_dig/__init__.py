@@ -16,7 +16,7 @@ from .MinecraftDigPatch import MinecraftDigProcedurePatch
 from .MinecraftDigClient import add_to_launcher_components
 
 add_to_launcher_components()
-client_version = 15
+client_version = 16
 GAME_NAME = "Minecraft Dig"
 
 class MinecraftDigSettings(settings.Group):
