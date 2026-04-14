@@ -1,6 +1,12 @@
 {
   "release": [
     {
+      "version": 16,
+      "java": "17",
+      "forge": "1.19.4-45.3.15",
+      "url": "https://github.com/jacobmix/Minecraft_AP_Randomizer/releases/download/0.0.11_dig/aprandomizer-MC1.19.4-0.0.11.jar"
+    },
+    {
       "version": 15,
       "java": "17",
       "forge": "1.19.4-45.3.15",
