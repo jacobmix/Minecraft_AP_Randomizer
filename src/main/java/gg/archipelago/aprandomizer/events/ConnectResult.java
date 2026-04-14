@@ -103,15 +103,20 @@ public class ConnectResult {
     }
 
     /**
-     * Scout the 27 Item Shop locations to get item classifications and names
+     * Scout Item Shop locations for unlocked tiers only.
+     * Uses BROADCAST_NEW (only option available), but since we only scout
+     * locations the player has access to, hints are expected.
      */
     private void scoutItemShopLocations() {
+        int shopTier = APRandomizer.worldData != null ? APRandomizer.worldData.getShopTierUnlocked() : 0;
+        if (shopTier <= 0) return;
+
+        int count = Math.min(shopTier * 9, 27);
         java.util.ArrayList<Long> locationIDs = new java.util.ArrayList<>();
-        for (int i = 0; i < 27; i++) {
+        for (int i = 0; i < count; i++) {
             locationIDs.add(54800L + i);
         }
         client.scoutLocations(locationIDs, CreateAsHint.BROADCAST_NEW);
-        LOGGER.info("Scouting 27 Item Shop locations (54800-54826)");
     }
 
     /**

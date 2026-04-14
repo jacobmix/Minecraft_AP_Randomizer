@@ -243,6 +243,15 @@ public class ItemManager {
                 APRandomizer.worldData.setShopTierUnlocked(nextShopTier);
                 Utils.sendMessageToAll("§d[Archipelago] §eItem Shop Tier " + nextShopTier + " unlocked!");
                 LOGGER.info("Progressive Shop unlock received, unlocking shop tier {}", nextShopTier);
+
+                // Scout the newly unlocked Item Shop locations for tooltip data
+                int startIndex = currentShopTier * 9;
+                int endIndex = Math.min(nextShopTier * 9, 27);
+                java.util.ArrayList<Long> locationIDs = new java.util.ArrayList<>();
+                for (int i = startIndex; i < endIndex; i++) {
+                    locationIDs.add(54800L + i);
+                }
+                APRandomizer.getAP().scoutLocations(locationIDs, io.github.archipelagomw.network.client.CreateAsHint.BROADCAST_NEW);
             }
         }
 
