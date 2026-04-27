@@ -16,7 +16,7 @@ on:
           - jar_dig
 
       replace_existing:
-        description: "Only update Jar. Replacing latest relevant version.json URL instead of creating new version"
+        description: "Only update Jar. Update latest relevent release. Replacing latest relevant version.json URL instead of creating new version"
         required: false
         default: false
         type: boolean
@@ -225,18 +225,26 @@ jobs:
         # list existing assets for the release
         ASSETS=$(gh release view "$TAG" --json assets -q '.assets[].name' || echo "")
     
-        MAX=0
-    
+        MAX=-1
+        
         for FILE in $ASSETS; do
+          # match new format: 0.0.11.X.jar
           if [[ "$FILE" =~ ${VERSION}\.([0-9]+)\.jar ]]; then
             NUM="${BASH_REMATCH[1]}"
-            if [ "$NUM" -ge "$MAX" ]; then
-              MAX=$((NUM + 1))
+            if [ "$NUM" -gt "$MAX" ]; then
+              MAX="$NUM"
+            fi
+        
+          # match old format: 0.0.11.jar
+          elif [[ "$FILE" =~ ${VERSION}\.jar ]]; then
+            if [ "$MAX" -lt 0 ]; then
+              MAX=0
             fi
           fi
         done
-    
-        echo "PATCH=$MAX" >> $GITHUB_OUTPUT
+        
+        PATCH=$((MAX + 1))
+        echo "PATCH=$PATCH" >> $GITHUB_OUTPUT
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
